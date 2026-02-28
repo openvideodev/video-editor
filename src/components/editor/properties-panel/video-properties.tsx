@@ -447,7 +447,9 @@ export function VideoProperties({ clip }: VideoPropertiesProps) {
 
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] text-muted-foreground">Spill</span>
+                <span className="text-[10px] text-muted-foreground">
+                  Spill
+                </span>
                 <span className="text-[10px] text-muted-foreground">
                   {Math.round((videoClip.chromaKey?.spill ?? 0.05) * 100)}%
                 </span>

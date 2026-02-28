@@ -1,36 +1,73 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# OpenVideo - AI Video Editor
+
+An advanced, AI-powered video editor that leverages **WebCodecs API** for high-performance client-side video rendering. This project allows users to create, edit, and export videos directly in the browser with the power of AI.
+
+## Features
+
+### 🤖 AI-Powered Capabilities
+- **AI Copilot**: Chat-based editing assistant to generate scripts, change visuals, and control the timeline.
+- **Script Generation**: Integrated with **OpenAI** and **Gemini** to create engaging video scripts from simple prompts.
+- **Text-to-Speech**: High-quality voice synthesization using **ElevenLabs** for professional voiceovers.
+- **Auto-Captions**: Automatic transcription and caption generation using **Deepgram**.
+
+### 🎬 Professional Video Editing
+- **Multi-Track Timeline**: Advanced timeline for managing video, audio, image, and text tracks.
+- **Client-Side Rendering**: Fast, private, and server-free rendering using the **WebCodecs API**.
+- **Rich Media Editing**: Trim, split, resize, rotate, and position elements with precision.
+- **Transitions & Effects**: Built-in library of transitions and visual effects to enhance your videos.
+
+### 🎨 Assets & Media
+- **Stock Library Integration**: Direct access to royalty-free images and videos from **Pexels** and **Freepik**.
+- **Media Uploads**: Easy drag-and-drop upload for your own videos, images, and audio files.
+- **Cloud Storage**: Secure asset management compatible with S3/R2.
+
+### 🚀 Export & Integration
+- **Social Media Ready**: Optimized export presets for TikTok, Instagram Reels, and YouTube Shorts.
+- **High-Quality Export**: Export videos in MP4 format up to 4K resolution.
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **Node.js** (v18 or higher recommended)
+- **pnpm** (Package Manager)
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Installation
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1.  Clone the repository:
+    ```bash
+    git clone https://github.com/openvideodev/openvideo.git
+    cd openvideo
+    ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+2.  Install dependencies:
+    ```bash
+    pnpm install
+    ```
 
-## Learn More
+3.  Configure environment variables:
+     Copy the sample environment file to `.env`:
+    ```bash
+    cp .env.sample .env
+    ```
+    > **Note**: You will need to obtain API keys for services like OpenAI, ElevenLabs, and others to fully utilize the AI features.
 
-To learn more about Next.js, take a look at the following resources:
+4.  Run the development server:
+    ```bash
+    pnpm dev
+    ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+5.  Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## License
 
-## Deploy on Vercel
+**OpenVideo** is dual-licensed:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1.  **Personal Use**: Free for personal, non-commercial use. You are welcome to explore the code, modify it, and use it for your own personal projects.
+2.  **Commercial Use**: Any commercial usage of this software requires a valid commercial license from **OpenVideo**.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+For commercial licensing inquiries, please contact **OpenVideo**.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
