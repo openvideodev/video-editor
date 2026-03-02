@@ -23,6 +23,7 @@ import EventEmitter from "./event-emitter";
 import * as SelectionHandlers from "./handlers/selection";
 import * as DragHandlers from "./handlers/drag-handler";
 import * as ModifyHandlers from "./handlers/modify-handler";
+import { PointerHandler } from "./handlers/pointer-handler";
 import { Scrollbars } from "./scrollbar";
 import { makeMouseWheel } from "./scrollbar/util";
 import type { ScrollbarsProps } from "./scrollbar/types";
@@ -79,12 +80,8 @@ class Timeline extends EventEmitter<TimelineCanvasEvents> {
   #scrollY: number = 0;
   #scrollbars?: Scrollbars;
   #mouseWheelHandler?: (e: TPointerEventInfo<WheelEvent>) => void;
-
-  // Drag Auto-scroll state
-  #dragAutoScrollRaf: number | null = null;
-  #lastPointer: { x: number; y: number } | null = null;
+  #inputController!: PointerHandler;
   #totalTracksHeight: number = 0;
-  #isSelectingArea: boolean = false;
 
   // Cache for Fabric objects
   #trackObjects: Map<string, Track> = new Map();
@@ -99,7 +96,7 @@ class Timeline extends EventEmitter<TimelineCanvasEvents> {
   #activeSeparatorIndex: number | null = null;
   #transitionButton: TransitionButton | null = null;
 
-  // Bound event handlers
+  // Bound event handlers (business-logic level — delegated from handlers/)
   #onDragging: (opt: any) => void;
   #onTrackRelocation: (opt: any) => void;
   #onClipModification: (opt: any) => void;
@@ -118,20 +115,19 @@ class Timeline extends EventEmitter<TimelineCanvasEvents> {
       return;
     }
 
-    // Bind handlers
+    // Bind business-logic handlers
     this.#onDragging = (options) => {
       const e = options.e as MouseEvent | PointerEvent | TouchEvent;
-      const pointer = "clientX" in e ? e : (e as TouchEvent).touches[0];
-      this.#lastPointer = { x: pointer.clientX, y: pointer.clientY };
-      this.#startDragAutoScroll();
+      const src = "clientX" in e ? e : (e as TouchEvent).touches[0];
+      this.#inputController.startAutoScroll({ x: src.clientX, y: src.clientY });
       DragHandlers.handleDragging(this, options);
     };
     this.#onTrackRelocation = (options) => {
-      this.#stopDragAutoScroll();
+      this.#inputController.stopAutoScroll();
       ModifyHandlers.handleTrackRelocation(this, options);
     };
     this.#onClipModification = (options) => {
-      this.#stopDragAutoScroll();
+      this.#inputController.stopAutoScroll();
       ModifyHandlers.handleClipModification(this, options);
     };
     this.#onSelectionCreate = (e) =>
@@ -160,41 +156,9 @@ class Timeline extends EventEmitter<TimelineCanvasEvents> {
       renderOnAddRemove: false, // Performance optimization
     });
 
-    this.canvas.on("mouse:wheel", (opt) => {
-      if (this.#mouseWheelHandler) {
-        this.#mouseWheelHandler(opt);
-        return;
-      }
-      const e = opt.e;
-      e.preventDefault();
-      e.stopPropagation();
-
-      if (e.ctrlKey || e.metaKey) {
-        this.emit("zoom", { delta: e.deltaY });
-      } else {
-        const deltaX = e.shiftKey ? e.deltaY : e.deltaX;
-        const deltaY = e.shiftKey ? 0 : e.deltaY;
-        this.emit("scroll", { deltaX, deltaY });
-      }
-    });
-
-    this.canvas.on("mouse:down", (options) => {
-      if (!options.target) {
-        this.#isSelectingArea = true;
-        const e = options.e as MouseEvent | PointerEvent | TouchEvent;
-        const pointer = "clientX" in e ? e : (e as TouchEvent).touches[0];
-        this.#lastPointer = { x: pointer.clientX, y: pointer.clientY };
-        this.#startDragAutoScroll();
-      }
-    });
-
-    this.canvas.on("mouse:move", (options) => {
-      if (this.#isSelectingArea) {
-        const e = options.e as MouseEvent | PointerEvent | TouchEvent;
-        const pointer = "clientX" in e ? e : (e as TouchEvent).touches[0];
-        this.#lastPointer = { x: pointer.clientX, y: pointer.clientY };
-      }
-    });
+    // Delegate all low-level pointer/wheel input to the controller
+    this.#inputController = new PointerHandler(this);
+    this.#inputController.bind();
 
     this.render();
 
@@ -207,153 +171,46 @@ class Timeline extends EventEmitter<TimelineCanvasEvents> {
     });
 
     this.#resizeObserver.observe(this.containerEl);
-    this.setupEvents();
+    this.#bindBusinessEvents();
   }
 
-  private setupEvents() {
+  /**
+   * Registers business-logic level Fabric event handlers (drag, modify, selection, hover).
+   * Low-level input (wheel/pointer) is handled by CanvasInputController.
+   */
+  #bindBusinessEvents() {
     this.canvas.on("object:moving", this.#onDragging);
-    // Note: handleTrackRelocation should run before handleClipModification or be prioritized
+    // handleTrackRelocation must run before handleClipModification
     this.canvas.on("object:modified", this.#onTrackRelocation);
     this.canvas.on("object:modified", this.#onClipModification);
     this.canvas.on("selection:created", this.#onSelectionCreate);
     this.canvas.on("selection:updated", this.#onSelectionUpdate);
     this.canvas.on("selection:cleared", this.#onSelectionClear);
     this.canvas.on("mouse:move", this.#onMouseMove);
-
-    // Stop auto-scroll on mouse up just in case
-    this.canvas.on("mouse:up", () => this.#stopDragAutoScroll());
   }
 
-  #startDragAutoScroll() {
-    if (this.#dragAutoScrollRaf) return;
-    const step = () => {
-      this.#handleDragAutoScroll();
-      this.#dragAutoScrollRaf = requestAnimationFrame(step);
-    };
-    this.#dragAutoScrollRaf = requestAnimationFrame(step);
+  // ──────────────────────────────────────────────────────────────────────────
+  // Public accessors used by CanvasInputController
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /** Current horizontal scroll offset in pixels. */
+  get scrollX(): number {
+    return this.#scrollX;
   }
 
-  #stopDragAutoScroll() {
-    if (this.#dragAutoScrollRaf) {
-      cancelAnimationFrame(this.#dragAutoScrollRaf);
-      this.#dragAutoScrollRaf = null;
-    }
-    this.#lastPointer = null;
-    this.#isSelectingArea = false;
+  /** Current vertical scroll offset in pixels. */
+  get scrollY(): number {
+    return this.#scrollY;
   }
 
-  #handleDragAutoScroll() {
-    if (!this.#lastPointer) return;
-
-    const viewportWidth = this.canvas.width;
-    const viewportHeight = this.canvas.height;
-    const threshold = 60;
-    const maxSpeed = 30;
-
-    // Get canvas element position to calculate relative mouse position
-    const rect = this.canvas.getElement().getBoundingClientRect();
-    const x = this.#lastPointer.x - rect.left;
-    const y = this.#lastPointer.y - rect.top;
-
-    let deltaX = 0;
-    let deltaY = 0;
-
-    if (x < threshold) {
-      deltaX = -maxSpeed * (1 - Math.max(0, x) / threshold);
-    } else if (x > viewportWidth - threshold) {
-      deltaX = maxSpeed * (1 - Math.max(0, viewportWidth - x) / threshold);
-    }
-
-    if (y < threshold) {
-      deltaY = -maxSpeed * (1 - Math.max(0, y) / threshold);
-    } else if (y > viewportHeight - threshold) {
-      deltaY = maxSpeed * (1 - Math.max(0, viewportHeight - y) / threshold);
-    }
-
-    if (deltaX !== 0 || deltaY !== 0) {
-      // Calculate max scroll values
-      const pixelsPerSecond = TIMELINE_CONSTANTS.PIXELS_PER_SECOND;
-      const projectDuration = useTimelineStore.getState().getTotalDuration();
-      const durationPx = projectDuration * pixelsPerSecond * this.#timeScale;
-
-      const maxScrollX = Math.max(0, durationPx - this.canvas.width);
-      const maxScrollY = Math.max(
-        0,
-        this.#totalTracksHeight + 15 - this.canvas.height,
-      ); // 15 is extraMarginY
-
-      if (this.#isSelectingArea) {
-        // --- SYNCHRONOUS CLAMPING FOR AREA SELECTION ---
-        const newScrollX = Math.max(
-          0,
-          Math.min(maxScrollX, this.#scrollX + deltaX),
-        );
-        const newScrollY = Math.max(
-          0,
-          Math.min(maxScrollY, this.#scrollY + deltaY),
-        );
-
-        const actualDeltaX = newScrollX - this.#scrollX;
-        const actualDeltaY = newScrollY - this.#scrollY;
-
-        if (actualDeltaX !== 0 || actualDeltaY !== 0) {
-          this.setScroll(newScrollX, newScrollY);
-
-          this.emit("scroll", {
-            deltaX: actualDeltaX,
-            deltaY: actualDeltaY,
-            scrollX: newScrollX,
-            scrollY: newScrollY,
-            isSelection: true,
-          });
-
-          // Force selection update to keep marquee synced with viewport
-          const e = {
-            clientX: this.#lastPointer.x,
-            clientY: this.#lastPointer.y,
-          } as any;
-          (this.canvas as any)._onMouseMove(e);
-          this.canvas.requestRenderAll();
-        }
-      } else {
-        // --- CLAMPING FOR OBJECT DRAGGING ---
-        // For horizontal dragging, we allow unlimited scrolling to the right (per requirement)
-        // but it must be clamped at 0 (left boundary).
-        const requestedScrollX = this.#scrollX + deltaX;
-        const newScrollX = Math.max(0, requestedScrollX);
-
-        // For vertical dragging, we clamp at both boundaries 0 and maxScrollY.
-        const requestedScrollY = this.#scrollY + deltaY;
-        const newScrollY = Math.max(0, Math.min(maxScrollY, requestedScrollY));
-
-        const actualDeltaX = newScrollX - this.#scrollX;
-        const actualDeltaY = newScrollY - this.#scrollY;
-
-        if (actualDeltaX !== 0 || actualDeltaY !== 0) {
-          this.setScroll(newScrollX, newScrollY);
-
-          this.emit("scroll", {
-            deltaX: actualDeltaX,
-            deltaY: actualDeltaY,
-            scrollX: newScrollX,
-            scrollY: newScrollY,
-          });
-
-          // Simulate mouse move to keep active objects and selection box synced.
-          if (this.#lastPointer) {
-            const e = {
-              clientX: this.#lastPointer.x,
-              clientY: this.#lastPointer.y,
-              type: "mousemove",
-              preventDefault: () => {},
-              stopPropagation: () => {},
-            } as any;
-            (this.canvas as any)._onMouseMove(e);
-          }
-          this.canvas.requestRenderAll();
-        }
-      }
-    }
+  /**
+   * Optional override installed by the Scrollbar subsystem.
+   * CanvasInputController checks this so it can delegate wheel events.
+   */
+  get mouseWheelHandler():
+    | ((e: TPointerEventInfo<WheelEvent>) => void)
+    | undefined {
+    return this.#mouseWheelHandler;
   }
 
   private handleMouseMove(opt: any) {
@@ -1182,10 +1039,18 @@ class Timeline extends EventEmitter<TimelineCanvasEvents> {
   }
 
   public dispose() {
+    // 1. Stop all input handling and cancel any pending RAF loop
+    if (this.#inputController) {
+      this.#inputController.unbind();
+    }
+
+    // 2. Stop observing size changes
     if (this.#resizeObserver) {
       this.#resizeObserver.disconnect();
       this.#resizeObserver = null;
     }
+
+    // 3. Remove business-logic Fabric listeners and dispose the canvas
     if (this.canvas) {
       this.canvas.off("object:moving", this.#onDragging);
       this.canvas.off("object:modified", this.#onTrackRelocation);
@@ -1198,6 +1063,15 @@ class Timeline extends EventEmitter<TimelineCanvasEvents> {
       this.clearTransitionButton();
       this.disposeScrollbars();
       this.canvas.dispose();
+      (this.canvas as any) = null;
+    }
+
+    // 4. Clear DOM and event emitter subscriptions
+    if (this.containerEl) {
+      this.containerEl.innerHTML = "";
+    }
+    if (this.all) {
+      this.all.clear();
     }
   }
 }
