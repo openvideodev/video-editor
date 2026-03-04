@@ -337,9 +337,24 @@ export default function Header() {
                 </p>
                 <div className="grid grid-cols-1 gap-1">
                   {[
-                    { label: "Square", icon: Square, width: 1080, height: 1080 },
-                    { label: "Portrait", icon: Smartphone, width: 1080, height: 1920 },
-                    { label: "Landscape", icon: Monitor, width: 1920, height: 1080 },
+                    {
+                      label: "Square",
+                      icon: Square,
+                      width: 1080,
+                      height: 1080,
+                    },
+                    {
+                      label: "Portrait",
+                      icon: Smartphone,
+                      width: 1080,
+                      height: 1920,
+                    },
+                    {
+                      label: "Landscape",
+                      icon: Monitor,
+                      width: 1920,
+                      height: 1080,
+                    },
                   ].map((preset) => {
                     const isSelected = aspectRatio === preset.label;
                     const Icon = preset.icon;
@@ -361,7 +376,7 @@ export default function Header() {
                         <div
                           className={cn(
                             "flex h-3.5 w-3.5 items-center justify-center rounded-full border border-muted-foreground/50",
-                            isSelected && "border-primary"
+                            isSelected && "border-primary",
                           )}
                         >
                           {isSelected && (

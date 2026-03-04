@@ -108,8 +108,8 @@ importers:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       openvideo:
-        specifier: ^0.2.0
-        version: 0.2.0(@types/react@19.2.8)(react@19.2.0)(yoga-layout@3.2.1)
+        specifier: ^0.2.2
+        version: 0.2.2(@types/react@19.2.8)(react@19.2.0)(yoga-layout@3.2.1)
       opfs-tools:
         specifier: ^0.7.2
         version: 0.7.4
@@ -2421,6 +2421,9 @@ packages:
   '@types/estree@1.0.8':
     resolution: {integrity: sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w==}
 
+  '@types/gradient-parser@0.1.5':
+    resolution: {integrity: sha512-r7K3NkJz3A95WkVVmjs0NcchhHstC2C/VIYNX4JC6tieviUNo774FFeOHjThr3Vw/WCeMP9kAT77MKbIRlO/4w==}
+
   '@types/hast@3.0.4':
     resolution: {integrity: sha512-WPs+bbQw5aCj+x6laNGWLH3wviHtoCv/P3+otBhbOhJgG8qtpdAMlTCxLtsTWA7LH1Oh/bFCHsBn0TPS5m30EQ==}
 
@@ -3875,8 +3878,8 @@ packages:
     resolution: {integrity: sha512-vz9iS7MJ5+Bp1URw8Khvdyw1H/hGvzHWlKQ7eRrQojSCDL1/SrWfrY9QebLw97n2deyRtzHRC3MkQfVNUCo91Q==}
     engines: {node: '>=0.10'}
 
-  openvideo@0.2.0:
-    resolution: {integrity: sha512-7NSPF8YgobS3oOOKQ/A3Y0QKdf+mOshRpTq1BwXb2SX7leBdF/AOrF0r7Hxm9L6iXPnUYRlNEMsrxeID5Rzn4Q==}
+  openvideo@0.2.2:
+    resolution: {integrity: sha512-MTmlQKRnp34vPYeUze9YF2quuw1m1AswXvi+kKOR4Q8+zJtC6pAxp7sPM6L4YsVd69XEknCXz+/r65k06W9QKg==}
 
   opfs-tools@0.7.4:
     resolution: {integrity: sha512-DJgQnXyPcCj3q8pKa8SjP4HfNBPffj8kO6W1nc2zQydTqu5G/AxOuIjmWnRxZ84nE1EOpzZzhj8MYCZP1jRR9A==}
@@ -3935,6 +3938,11 @@ packages:
 
   picocolors@1.1.1:
     resolution: {integrity: sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==}
+
+  pixi-filters@6.1.5:
+    resolution: {integrity: sha512-Ewb/J+kxAbaNN+0/ATJbglAJG+skGJfh7BIDP3ILIDdD6wWk1p0pGa25pVf1T8hGBOQSUNVAmwwJBwkj+cyLLA==}
+    peerDependencies:
+      pixi.js: '>=8.0.0-0'
 
   pixi.js@8.16.0:
     resolution: {integrity: sha512-gu2xw3sZGAn3cWBtk0HqTQT+v19YAfiaYXwUGgWoJl5NKz4cEZJUgWrwkmdfDszGyYBAGqOvJNbd2M9+vzLLMg==}
@@ -7709,6 +7717,8 @@ snapshots:
 
   '@types/estree@1.0.8': {}
 
+  '@types/gradient-parser@0.1.5': {}
+
   '@types/hast@3.0.4':
     dependencies:
       '@types/unist': 3.0.3
@@ -9587,7 +9597,7 @@ snapshots:
 
   opentracing@0.14.7: {}
 
-  openvideo@0.2.0(@types/react@19.2.8)(react@19.2.0)(yoga-layout@3.2.1):
+  openvideo@0.2.2(@types/react@19.2.8)(react@19.2.0)(yoga-layout@3.2.1):
     dependencies:
       '@pixi/layout': 3.2.0(@types/react@19.2.8)(pixi.js@8.16.0)(react@19.2.0)(yoga-layout@3.2.1)
       gl-transitions: 1.43.0
@@ -9595,6 +9605,7 @@ snapshots:
       mediabunny: 1.35.1
       microdiff: 1.5.0
       opfs-tools: 0.7.4
+      pixi-filters: 6.1.5(pixi.js@8.16.0)
       pixi.js: 8.16.0
       wave-resampler: 1.0.0
       wrapbox: 0.1.0
@@ -9666,6 +9677,11 @@ snapshots:
     optional: true
 
   picocolors@1.1.1: {}
+
+  pixi-filters@6.1.5(pixi.js@8.16.0):
+    dependencies:
+      '@types/gradient-parser': 0.1.5
+      pixi.js: 8.16.0
 
   pixi.js@8.16.0:
     dependencies:
