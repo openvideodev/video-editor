@@ -9,6 +9,8 @@ import {
 } from '@/types/timeline';
 import { TIMELINE_CONSTANTS } from '../../timeline-constants';
 
+const SNAP_OVERLAP_TOLERANCE_US = 10000; // 10ms tolerance for rounding errors during snap
+
 /**
  * Helper to safely update the local clips map in Timeline to reflect the new visual state
  * before the asynchronous store update comes back.
@@ -199,7 +201,11 @@ export function handleTrackRelocation(timeline: Timeline, options: any) {
 
           // Two clips overlap if:
           // proposedStart < otherEnd AND proposedEnd > otherStart
-          if (proposedStart < otherEnd && proposedEnd > otherStart) {
+          // We use a small tolerance to account for microsecond rounding errors during snapping.
+          if (
+            proposedStart < otherEnd - SNAP_OVERLAP_TOLERANCE_US &&
+            proposedEnd > otherStart + SNAP_OVERLAP_TOLERANCE_US
+          ) {
             hasOverlap = true;
             break;
           }

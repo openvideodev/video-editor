@@ -89,6 +89,17 @@ export function CanvasPanel({ onReady }: CanvasPanelProps) {
           ]),
           studioRef.current.ready,
         ]);
+
+        // If there's initial data from the project store, load it now
+        const projectStore = useProjectStore.getState();
+        const initialJSON = projectStore.initialStudioJSON;
+        if (initialJSON) {
+          // Clear it immediately to "consume" it and avoid double-loading (especially in Strict Mode)
+          projectStore.setInitialStudioJSON(null);
+          console.log("Loading initial studio JSON", initialJSON);
+          await studioRef.current.loadFromJSON(initialJSON);
+        }
+
         onReadyRef.current?.();
       } catch (error) {
         console.error("Failed to initialize studio:", error);

@@ -26,12 +26,20 @@ export default function EditProjectPage() {
                 }
 
                 // Initialize project store
-                useProjectStore.getState().setCanvasSize(project.canvasSize, project.canvasMode || "preset");
+                const projectStore = useProjectStore.getState();
+                projectStore.setCanvasSize(project.canvasSize, project.canvasMode || "preset");
                 if (project.fps) {
-                    useProjectStore.getState().setFps(project.fps);
+                    projectStore.setFps(project.fps);
                 }
 
-                // In the future: load timeline and clips here if implemented in storageService
+                // Load the full project state from OPFS
+                const projectFull = await storageService.loadProjectFull(projectId);
+                if (projectFull) {
+                    projectStore.setInitialStudioJSON(projectFull);
+                } else {
+                    // Reset if not found (legacy or first-time open after feature update)
+                    projectStore.setInitialStudioJSON(null);
+                }
             } catch (err) {
                 console.error("Failed to load project", err);
             } finally {

@@ -36,7 +36,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ModeToggle } from "../ui/mode-toggle";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
+import { storageService } from "@/lib/storage/storage-service";
+import { Save } from "lucide-react";
 
 export default function Header() {
   const { studio } = useStudioStore();
@@ -48,6 +50,9 @@ export default function Header() {
   const [customWidth, setCustomWidth] = useState("");
   const [customHeight, setCustomHeight] = useState("");
   const router = useRouter();
+  const params = useParams();
+  const projectId = params.projectId as string;
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleApplyCustomSize = () => {
     const w = parseInt(customWidth);
@@ -190,6 +195,52 @@ export default function Header() {
       studio.off("history:changed", handleHistoryChange);
     };
   }, [studio]);
+
+  const handleSave = async (showToast = true) => {
+    if (!studio || !projectId) return;
+
+    setIsSaving(true);
+    let toastId;
+    if (showToast) {
+      toastId = toast.loading("Saving project...");
+    }
+
+    try {
+      const studioJSON = studio.exportToJSON();
+      await storageService.saveProjectFull(projectId, studioJSON);
+      if (showToast) {
+        toast.success("Project saved", { id: toastId });
+      }
+    } catch (error) {
+      console.error("Failed to save project", error);
+      if (showToast) {
+        toast.error("Failed to save project", { id: toastId });
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+  // Auto-save on studio changes (with debounce)
+  useEffect(() => {
+    if (!studio || !projectId) return;
+
+    let timeoutId: NodeJS.Timeout;
+
+    const onStudioChange = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        handleSave(false); // Silent save
+      }, 2000); // 2 second debounce
+    };
+
+    studio.on("history:changed", onStudioChange);
+
+    return () => {
+      studio.off("history:changed", onStudioChange);
+      clearTimeout(timeoutId);
+    };
+  }, [studio, projectId]);
+
 
   const handleNew = () => {
     if (!studio) return;
@@ -510,6 +561,7 @@ export default function Header() {
         />
 
         <ModeToggle />
+
 
         <Button
           size="sm"

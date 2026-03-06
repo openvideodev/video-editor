@@ -165,6 +165,40 @@ class StorageService {
 
   async deleteProject({ id }: { id: string }): Promise<void> {
     await this.projectsAdapter.remove(id);
+    // Also delete project-specific data
+    try {
+      const { mediaFilesAdapter } = this.getProjectMediaAdapters({
+        projectId: id,
+      });
+      await mediaFilesAdapter.clear();
+
+      const timelineAdapter = this.getProjectTimelineAdapter({ projectId: id });
+      await timelineAdapter.clear();
+    } catch (e) {
+      console.error('Failed to clear project data during deletion', e);
+    }
+  }
+
+  // Full project serialization via OPFS
+  async saveProjectFull(projectId: string, studioJSON: any): Promise<void> {
+    const { mediaFilesAdapter } = this.getProjectMediaAdapters({ projectId });
+    const jsonString = JSON.stringify(studioJSON);
+    // Use the name 'project.json' for the serialized state
+    await (mediaFilesAdapter as any).set('project.json', jsonString);
+  }
+
+  async loadProjectFull(projectId: string): Promise<any | null> {
+    const { mediaFilesAdapter } = this.getProjectMediaAdapters({ projectId });
+    const file = await mediaFilesAdapter.get('project.json');
+    if (!file) return null;
+
+    try {
+      const text = await file.text();
+      return JSON.parse(text);
+    } catch (e) {
+      console.error('Failed to parse project.json from OPFS', e);
+      return null;
+    }
   }
 
   // Media operations
