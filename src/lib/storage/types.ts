@@ -1,4 +1,4 @@
-import { TProject, Scene } from "@/types/project";
+import { TProject } from "@/types/project";
 import { TimelineTrack } from "@/types/timeline";
 
 export interface StorageAdapter<T> {
@@ -28,14 +28,6 @@ export interface TimelineData {
   tracks: TimelineTrack[];
   lastModified: string;
 }
-
-export interface SceneTimelineData {
-  sceneId: string;
-  tracks: TimelineTrack[];
-  lastModified: string;
-}
-
-// No longer using SerializedScene
 
 export interface StorageConfig {
   projectsDb: string;
