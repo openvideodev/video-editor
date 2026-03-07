@@ -35,10 +35,7 @@ export interface SceneTimelineData {
   lastModified: string;
 }
 
-export type SerializedScene = Omit<Scene, "createdAt" | "updatedAt"> & {
-  createdAt: string;
-  updatedAt: string;
-};
+// No longer using SerializedScene
 
 export interface StorageConfig {
   projectsDb: string;
@@ -49,10 +46,9 @@ export interface StorageConfig {
 }
 
 // Helper type for serialization - converts Date objects to strings
-export type SerializedProject = Omit<TProject, "createdAt" | "updatedAt" | "scenes"> & {
+export type SerializedProject = Omit<TProject, "createdAt" | "updatedAt"> & {
   createdAt: string;
   updatedAt: string;
-  scenes: SerializedScene[];
   bookmarks?: number[];
 };
 
