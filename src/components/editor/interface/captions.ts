@@ -22,10 +22,19 @@ export interface ICaptionsControlProps {
   previewUrl?: string;
   textAlign?: string;
   preservedColorKeyWord?: boolean;
+  fontSize?: number;
   wordAnimation?: {
     type: "scale" | "opacity";
     application: "active" | "keyword" | "none";
     value: number;
     mode?: "static" | "dynamic";
+  };
+  textBoxStyle?: {
+    style?: "tiktok" | "none";
+    textAlign?: "left" | "center" | "right" | "";
+    maxLines?: number;
+    borderRadius?: number;
+    horizontalPadding?: number;
+    verticalPadding?: number;
   };
 }
