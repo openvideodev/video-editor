@@ -7,6 +7,13 @@ import { Loader2 } from "lucide-react";
 
 const TRANSITION_DURATION_DEFAULT = 2_000_000;
 
+const gridClasses = `
+  grid
+  grid-cols-[repeat(auto-fill,minmax(80px,1fr))]
+  gap-4
+  justify-items-center
+`;
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type CustomPreset = {
@@ -97,7 +104,7 @@ const TransitionDefault = () => {
   const allTransitions = getTransitionOptions();
 
   return (
-    <div className="grid grid-cols-[repeat(auto-fill,minmax(92px,1fr))] gap-2.5 justify-items-center">
+    <>
       {allTransitions.map((effect) => (
         <TransitionCard
           key={effect.key}
@@ -111,7 +118,7 @@ const TransitionDefault = () => {
           }}
         />
       ))}
-    </div>
+    </>
   );
 };
 
@@ -181,7 +188,7 @@ const TransitionCustom = () => {
   }
 
   return (
-    <div className="grid grid-cols-[repeat(auto-fill,minmax(92px,1fr))] gap-2.5 justify-items-center">
+    <>
       {ownPresets.map((preset) => (
         <TransitionCard
           key={preset.id}
@@ -203,7 +210,7 @@ const TransitionCustom = () => {
           badge="Public"
         />
       ))}
-    </div>
+    </>
   );
 };
 
@@ -211,8 +218,8 @@ const TransitionCustom = () => {
 
 const PanelTransition = () => {
   return (
-    <div className="py-4 px-4 h-full flex flex-col gap-4">
-      <Tabs defaultValue="default" className="w-full h-full flex flex-col">
+    <div className="p-4 h-full">
+      <Tabs defaultValue="default" className="w-full h-full">
         <TabsList className="w-full">
           <TabsTrigger value="default" className="flex-1">
             Default
@@ -222,17 +229,18 @@ const PanelTransition = () => {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="default" className="flex-1 mt-4">
-          <ScrollArea className="h-full">
-            <TransitionDefault />
-          </ScrollArea>
-        </TabsContent>
-
-        <TabsContent value="custom" className="flex-1 mt-4">
-          <ScrollArea className="h-full">
-            <TransitionCustom />
-          </ScrollArea>
-        </TabsContent>
+        {[
+          { value: "default", Component: TransitionDefault },
+          { value: "custom", Component: TransitionCustom },
+        ].map(({ value, Component }) => (
+          <TabsContent key={value} value={value} className="h-full">
+            <ScrollArea className="h-[calc(100%-60px)]">
+              <div className={gridClasses}>
+                <Component />
+              </div>
+            </ScrollArea>
+          </TabsContent>
+        ))}
       </Tabs>
     </div>
   );

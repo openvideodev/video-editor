@@ -64,7 +64,7 @@ export function AnimationPropertiesPicker() {
   });
   const [delay, setDelay] = useState<number>((animation?.options.delay || 0) / 1000);
   const [iterCount, setIterCount] = useState<number>(animation?.options.iterCount || 1);
-  const [easing, setEasing] = useState<string>((animation?.options.easing as string) || "");
+  const [easing, setEasing] = useState<string>((animation?.options.easing as string) || "linear");
   const [mirrorEnabled, setMirrorEnabled] = useState<boolean>(false);
 
   // Initialize from animation
@@ -376,6 +376,28 @@ export function AnimationPropertiesPicker() {
     { label: "Combo Bounce 1", value: "comboBounce1" },
     { label: "Combo Sway In", value: "comboSwayIn" },
   ];
+
+  useEffect(() => {
+    let newDuration = 1000;
+    let mirror = false;
+    if (activeTab === "combo") {
+      newDuration = clipDuration / 1000;
+      mirror = true;
+    } else {
+      if (animation?.options?.duration) {
+        newDuration = animation.options.duration / 1000;
+      } else if (typeClip === "Caption") {
+        newDuration = (clipDuration * 0.2) / 1000;
+      }
+      if (animation?.params) {
+        mirror = Object.values(animation.params as KeyframeData).some(
+          (p: any) => p && p.mirror > 0,
+        );
+      }
+    }
+    setDuration(newDuration);
+    setMirrorEnabled(mirror);
+  }, [clipDuration, activeTab, animation, typeClip]);
 
   return (
     <div
