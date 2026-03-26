@@ -46,6 +46,7 @@ export function TimelineClipMenu({ timelineCanvas }: TimelineClipMenuProps) {
 
     const handleClear = () => {
       setSelectedClips([]);
+      setStudioSelectedClips([]);
     };
 
     studio.on("selection:created", handleSelection);

@@ -350,14 +350,20 @@ export function Timeline() {
     }
   }, [currentTheme]);
 
-  // const handleDelete = useCallback(() => {
-  //   studio?.deleteSelected();
-  // }, [studio]);
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      if (!canvasInstance) return;
 
-  // const handleDuplicate = useCallback(() => {
-  //   studio?.duplicateSelected();
-  // }, [studio]);
+      // Find object under mouse
+      const target = canvasInstance.canvas.findTarget(e.nativeEvent);
 
+      if (target && (target as any).elementId) {
+        const clipId = (target as any).elementId;
+        canvasInstance.selectClips([clipId]);
+      }
+    },
+    [canvasInstance],
+  );
   const handleSplit = useCallback(() => {
     // Current time is in seconds in PlaybackStore. Canvas expects microseconds.
     const splitTime = usePlaybackStore.getState().currentTime * 1_000_000;
@@ -546,6 +552,7 @@ export function Timeline() {
                 <div
                   id="timeline-canvas"
                   className="w-full h-full"
+                  onContextMenu={handleContextMenu}
                   onDragOver={(e) => {
                     e.preventDefault();
                     if (timelineCanvasRef.current) {
@@ -580,13 +587,17 @@ export function Timeline() {
                           existingTransition.clipBId,
                         );
                       } else {
-                        const junction = timelineCanvasRef.current.findJunction(x, y);
+                        const junction = timelineCanvasRef.current.getJunction(
+                          x,
+                          y,
+                          true, // Use expanded logic for drop as well
+                        );
                         if (junction) {
                           await studio.addTransition(
                             transitionKey,
                             2_000_000,
-                            junction.clipAId,
-                            junction.clipBId,
+                            junction.clipA.id,
+                            junction.clipB.id,
                           );
                         }
                       }

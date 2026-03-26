@@ -23,13 +23,15 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useStudioStore } from "@/stores/studio-store";
+import { clipToJSON, jsonToClip, type ClipJSON } from "openvideo";
+import { generateUUID } from "@/utils/id";
 
 // Module-level clipboard — persists across renders
-export let clipboardClipId: string | null = null;
+export let clipboardClipJSON: ClipJSON | null = null;
 
 export function useClipActions(clipOverride?: any) {
   const { studio, selectedClips } = useStudioStore();
-  const [hasClipboard, setHasClipboard] = React.useState(clipboardClipId !== null);
+  const [hasClipboard, setHasClipboard] = React.useState(clipboardClipJSON !== null);
   const [isLocked, setIsLocked] = React.useState(false);
 
   const selectedClip = clipOverride || (selectedClips[0] as any);
@@ -38,7 +40,7 @@ export function useClipActions(clipOverride?: any) {
   React.useEffect(() => {
     const clip = selectedClips[0] as any;
     setIsLocked(clip?.locked ?? false);
-    setHasClipboard(clipboardClipId !== null);
+    setHasClipboard(clipboardClipJSON !== null);
   }, [selectedClips]);
 
   React.useEffect(() => {
@@ -57,18 +59,20 @@ export function useClipActions(clipOverride?: any) {
 
   const handleCopy = useCallback(() => {
     if (!selectedClip) return;
-    clipboardClipId = selectedClip.id;
+    clipboardClipJSON = clipToJSON(selectedClip, false);
     setHasClipboard(true);
   }, [selectedClip]);
 
   const handlePaste = useCallback(async () => {
-    if (!studio || !clipboardClipId) return;
-    // Find the clip by id and duplicate it
-    const clip = studio.timeline.getClipById(clipboardClipId);
-    if (!clip) return;
-    // Select the clip then duplicate it
-    studio.selection.selectClipsByIds([clipboardClipId]);
-    await studio.duplicateSelected();
+    if (!studio || !clipboardClipJSON) return;
+
+    // Create a NEW clip from the JSON snapshot
+    const newClip = await jsonToClip(clipboardClipJSON);
+    // Assign a new ID to avoid collisions
+    newClip.id = generateUUID();
+
+    // Add to studio
+    await studio.addClip(newClip);
   }, [studio]);
 
   const handleDuplicate = useCallback(async () => {

@@ -40,7 +40,7 @@ export function CanvasPanel({ onReady }: CanvasPanelProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const studioRef = useRef<Studio | null>(null);
   const onReadyRef = useRef(onReady);
-  const { setStudio } = useStudioStore();
+  const { setStudio, setSelectedClips } = useStudioStore();
   const { canvasSize, initialStudioJSON } = useProjectStore();
   const { theme, resolvedTheme } = useTheme();
   const {
@@ -168,11 +168,56 @@ export function CanvasPanel({ onReady }: CanvasPanelProps) {
     }
   }, [initialStudioJSON]);
 
+  useEffect(() => {
+    if (!studioRef.current) return;
+
+    const studio = studioRef.current;
+
+    const handleSelection = (data: { selected: any[] }) => {
+      setSelectedClips(data.selected);
+    };
+
+    const handleClear = () => {
+      setSelectedClips([]);
+    };
+
+    studio.on("selection:created", handleSelection);
+    studio.on("selection:updated", handleSelection);
+    studio.on("selection:cleared", handleClear);
+
+    return () => {
+      studio.off("selection:created", handleSelection);
+      studio.off("selection:updated", handleSelection);
+      studio.off("selection:cleared", handleClear);
+    };
+  }, [setSelectedClips]);
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    if (!studioRef.current || !canvasRef.current) return;
+
+    const rect = canvasRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    // Convert to PIXI global coordinates
+    const topmostClip = studioRef.current.selection.getTopmostClipAtPoint({
+      x,
+      y,
+    });
+
+    if (topmostClip) {
+      studioRef.current.selection.selectClip(topmostClip);
+    } else {
+      studioRef.current.selection.deselectClip();
+    }
+  };
+
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
         <div className="h-full w-full flex flex-col min-h-0 min-w-0 bg-card rounded-sm relative">
           <div
+            onContextMenu={handleContextMenu}
             style={{
               flex: 1,
               position: "relative", // Ensure relative positioning for absolute children if needed
@@ -194,53 +239,63 @@ export function CanvasPanel({ onReady }: CanvasPanelProps) {
         </div>
       </ContextMenuTrigger>
 
-      {selectedClip && selectedClip?.type !== "Transition" && (
-        <ContextMenuContent className="w-44">
-          {!isLocked && (
-            <>
-              <ContextMenuItem onClick={handleCopy} disabled={!selectedClip}>
-                <Copy />
-                Copy
-                <ContextMenuShortcut>⌘ C</ContextMenuShortcut>
-              </ContextMenuItem>
+      <ContextMenuContent
+        className="w-44"
+        onContextMenu={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+      >
+        {selectedClip && selectedClip?.type !== "Transition" ? (
+          <>
+            {!isLocked && (
+              <>
+                <ContextMenuItem onClick={handleCopy} disabled={!selectedClip}>
+                  <Copy className="mr-2 w-4 h-4" />
+                  Copy
+                  <ContextMenuShortcut>⌘ C</ContextMenuShortcut>
+                </ContextMenuItem>
 
-              <ContextMenuItem onClick={handlePaste} disabled={!hasClipboard}>
-                <Clipboard />
-                Paste
-                <ContextMenuShortcut>⌘ V</ContextMenuShortcut>
-              </ContextMenuItem>
+                <ContextMenuItem onClick={handlePaste} disabled={!hasClipboard}>
+                  <Clipboard className="mr-2 w-4 h-4" />
+                  Paste
+                  <ContextMenuShortcut>⌘ V</ContextMenuShortcut>
+                </ContextMenuItem>
 
-              <ContextMenuItem onClick={handleDuplicate} disabled={!selectedClip}>
-                <CopyPlus />
-                Duplicate
-                <ContextMenuShortcut>⌘ D</ContextMenuShortcut>
-              </ContextMenuItem>
-            </>
-          )}
+                <ContextMenuItem onClick={handleDuplicate} disabled={!selectedClip}>
+                  <CopyPlus className="mr-2 w-4 h-4" />
+                  Duplicate
+                  <ContextMenuShortcut>⌘ D</ContextMenuShortcut>
+                </ContextMenuItem>
+              </>
+            )}
 
-          {selectedClip ? (
             <ContextMenuItem onClick={handleToggleLock}>
-              {isLocked ? <LockKeyholeOpen /> : <LockKeyhole />}
+              {isLocked ? (
+                <LockKeyholeOpen className="mr-2 w-4 h-4" />
+              ) : (
+                <LockKeyhole className="mr-2 w-4 h-4" />
+              )}
               {isLocked ? "Unlock" : "Lock"}
               <ContextMenuShortcut>⌘ L</ContextMenuShortcut>
             </ContextMenuItem>
-          ) : (
-            <ContextMenuItem disabled>
-              <LockKeyhole />
-              Lock
-              <ContextMenuShortcut>⌘ L</ContextMenuShortcut>
-            </ContextMenuItem>
-          )}
 
-          {!isLocked && (
-            <ContextMenuItem onClick={handleDelete} disabled={!selectedClip}>
-              <Trash2 />
-              Delete
-              <ContextMenuShortcut>⌫</ContextMenuShortcut>
-            </ContextMenuItem>
-          )}
-        </ContextMenuContent>
-      )}
+            {!isLocked && (
+              <ContextMenuItem onClick={handleDelete} disabled={!selectedClip}>
+                <Trash2 className="mr-2 w-4 h-4" />
+                Delete
+                <ContextMenuShortcut>⌫</ContextMenuShortcut>
+              </ContextMenuItem>
+            )}
+          </>
+        ) : (
+          <ContextMenuItem onClick={handlePaste} disabled={!hasClipboard}>
+            <Clipboard className="mr-2 w-4 h-4" />
+            Paste
+            <ContextMenuShortcut>⌘ V</ContextMenuShortcut>
+          </ContextMenuItem>
+        )}
+      </ContextMenuContent>
     </ContextMenu>
   );
 }
