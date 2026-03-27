@@ -266,8 +266,11 @@ export function handleTrackRelocation(timeline: Timeline, options: any) {
         });
       } else {
         // --- NO OVERLAP: MOVE ---
+        const originalClip = timeline.clipsMap[clipId];
+        const positionChanged = originalClip && proposedStart !== originalClip.display.from;
+
         const currentTrack = timeline.tracks.find((t) => t.clipIds.includes(clipId));
-        if (currentTrack && currentTrack.id !== trackRegion.id) {
+        if (currentTrack && (currentTrack.id !== trackRegion.id || positionChanged)) {
           if (transitionsToDelete.length > 0) {
             const newTracksList = timeline.tracks
               .map((t) => ({
@@ -352,6 +355,38 @@ export function handleClipModification(timeline: Timeline, options: any) {
     }
 
     if (clips.length > 0) {
+      const transitionsToDelete = new Set<string>();
+      for (const mod of clips) {
+        const originalClip = timeline.clipsMap[mod.clipId];
+        if (!originalClip) continue;
+
+        const newFrom = mod.displayFrom;
+        const newTo = mod.displayFrom + originalClip.duration;
+
+        Object.values(timeline.clipsMap).forEach((c: any) => {
+          if (c.type !== "Transition") return;
+          if (c.toClipId === mod.clipId && newFrom !== originalClip.display.from) {
+            transitionsToDelete.add(c.id);
+          } else if (c.fromClipId === mod.clipId && newTo !== originalClip.display.to) {
+            transitionsToDelete.add(c.id);
+          }
+        });
+      }
+
+      if (transitionsToDelete.size > 0) {
+        const transitionIds = Array.from(transitionsToDelete);
+        const newTracksList = timeline.tracks
+          .map((t) => ({
+            ...t,
+            clipIds: t.clipIds.filter((id) => !transitionsToDelete.has(id)),
+          }))
+          .filter((t) => t.clipIds.length > 0);
+
+        timeline.setTracksInternal(newTracksList);
+        timeline.emit("clips:removed", { clipIds: transitionIds });
+        timeline.emit("timeline:updated", { tracks: newTracksList });
+      }
+
       timeline.emit("clips:modified", { clips });
     }
   } else {
@@ -380,6 +415,36 @@ export function handleClipModification(timeline: Timeline, options: any) {
     );
 
     const trim = targetAny.trim;
+
+    const originalClip = timeline.clipsMap[clipId];
+    if (originalClip) {
+      const transitionsToDelete = new Set<string>();
+      const newFrom = displayFrom;
+      const newTo = displayFrom + duration;
+
+      Object.values(timeline.clipsMap).forEach((c: any) => {
+        if (c.type !== "Transition") return;
+        if (c.toClipId === clipId && newFrom !== originalClip.display.from) {
+          transitionsToDelete.add(c.id);
+        } else if (c.fromClipId === clipId && newTo !== originalClip.display.to) {
+          transitionsToDelete.add(c.id);
+        }
+      });
+
+      if (transitionsToDelete.size > 0) {
+        const transitionIds = Array.from(transitionsToDelete);
+        const newTracksList = timeline.tracks
+          .map((t) => ({
+            ...t,
+            clipIds: t.clipIds.filter((id) => !transitionsToDelete.has(id)),
+          }))
+          .filter((t) => t.clipIds.length > 0);
+
+        timeline.setTracksInternal(newTracksList);
+        timeline.emit("clips:removed", { clipIds: transitionIds });
+        timeline.emit("timeline:updated", { tracks: newTracksList });
+      }
+    }
 
     timeline.emit("clip:modified", {
       clipId,
