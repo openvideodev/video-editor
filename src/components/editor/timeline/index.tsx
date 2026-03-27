@@ -598,28 +598,6 @@ export function Timeline() {
                           existingTransition.clipAId,
                           existingTransition.clipBId,
                         );
-                        // Get the newly added transition (it will be connected to these two clips)
-                        const latestClips = useTimelineStore.getState().clips;
-                        const transitionArray = Object.values(latestClips).filter(
-                          (c: any) =>
-                            c.type === "Transition" &&
-                            c.fromClipId === existingTransition.clipAId &&
-                            c.toClipId === existingTransition.clipBId,
-                        );
-                        if (transitionArray.length > 0) {
-                          const tClip = transitionArray[transitionArray.length - 1];
-                          const cA = latestClips[existingTransition.clipAId];
-                          const cB = latestClips[existingTransition.clipBId];
-                          if (cA && cB) {
-                            await (studio as any).updateTransition(tClip.id, {
-                              duration: duration,
-                              fromClipDurationMicro:
-                                (cA.sourceDuration || cA.duration) - duration / 2,
-                              toClipDurationMicro:
-                                (cB.sourceDuration || cB.duration) - duration / 2,
-                            });
-                          }
-                        }
                       } else {
                         const junction = timelineCanvasRef.current.getJunction(
                           x,
@@ -643,28 +621,6 @@ export function Timeline() {
                             junction.clipA.id,
                             junction.clipB.id,
                           );
-                          // Update to guarantee correct crossfade sync
-                          const latestClips = useTimelineStore.getState().clips;
-                          const transitionArray = Object.values(latestClips).filter(
-                            (c: any) =>
-                              c.type === "Transition" &&
-                              c.fromClipId === junction.clipA.id &&
-                              c.toClipId === junction.clipB.id,
-                          );
-                          if (transitionArray.length > 0) {
-                            const tClip = transitionArray[transitionArray.length - 1];
-                            const cA = latestClips[junction.clipA.id];
-                            const cB = latestClips[junction.clipB.id];
-                            if (cA && cB) {
-                              await (studio as any).updateTransition(tClip.id, {
-                                duration: duration,
-                                fromClipDurationMicro:
-                                  (cA.sourceDuration || cA.duration) - duration / 2,
-                                toClipDurationMicro:
-                                  (cB.sourceDuration || cB.duration) - duration / 2,
-                              });
-                            }
-                          }
                         }
                       }
                     }

@@ -156,6 +156,7 @@ class Timeline extends EventEmitter<TimelineCanvasEvents> {
       height: clientHeight,
       selection: true,
       renderOnAddRemove: false, // Performance optimization
+      preserveObjectStacking: true,
     });
 
     // Delegate all low-level pointer/wheel input to the controller
@@ -519,6 +520,7 @@ class Timeline extends EventEmitter<TimelineCanvasEvents> {
       ) {
         this.#transitionButton.set({ left: x, top: y });
         this.#transitionButton.setCoords();
+        this.canvas.bringObjectToFront(this.#transitionButton);
         this.canvas.requestRenderAll();
         return;
       }
@@ -564,6 +566,7 @@ class Timeline extends EventEmitter<TimelineCanvasEvents> {
       } else {
         this.#transitionPlaceholder.set({ left: x, top: y });
         this.#transitionPlaceholder.setCoords();
+        this.canvas.bringObjectToFront(this.#transitionPlaceholder);
         this.canvas.requestRenderAll();
         return;
       }
@@ -1081,6 +1084,16 @@ class Timeline extends EventEmitter<TimelineCanvasEvents> {
         }
       });
     });
+
+    // --- PASS 5: BRING AUXILIARY OBJECTS TO FRONT ---
+    if (this.#transitionButton) {
+      this.canvas.bringObjectToFront(this.#transitionButton);
+      this.#transitionButton.set({ dirty: true });
+    }
+    if (this.#transitionPlaceholder) {
+      this.canvas.bringObjectToFront(this.#transitionPlaceholder);
+      this.#transitionPlaceholder.set({ dirty: true });
+    }
 
     // Cleanup Unused Objects
     // Tracks
