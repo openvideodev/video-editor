@@ -119,6 +119,14 @@ export function Timeline() {
   const timelineCanvasRef = useRef<TimelineCanvas | null>(null);
   const [canvasInstance, setCanvasInstance] = useState<TimelineCanvas | null>(null);
   const isUpdatingRef = useRef(false);
+  const lastDragPos = useRef({ x: 0, y: 0 });
+  const dragRafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (dragRafRef.current) cancelAnimationFrame(dragRafRef.current);
+    };
+  }, []);
 
   const handleScrollChange = useCallback(
     (scrollX: number) => {
@@ -555,12 +563,24 @@ export function Timeline() {
                   onContextMenu={handleContextMenu}
                   onDragOver={(e) => {
                     e.preventDefault();
-                    if (timelineCanvasRef.current) {
-                      const rect = e.currentTarget.getBoundingClientRect();
-                      const x = e.clientX - rect.left;
-                      const y = e.clientY - rect.top;
-                      timelineCanvasRef.current.findJunction(x, y, true);
-                    }
+                    if (!timelineCanvasRef.current) return;
+
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+
+                    // Spatial debounce: only update if moved significantly
+                    const dx = Math.abs(x - lastDragPos.current.x);
+                    const dy = Math.abs(y - lastDragPos.current.y);
+                    if (dx < 2 && dy < 2) return;
+
+                    lastDragPos.current = { x, y };
+
+                    if (dragRafRef.current) return;
+                    dragRafRef.current = requestAnimationFrame(() => {
+                      dragRafRef.current = null;
+                      timelineCanvasRef.current?.findJunction(x, y, true);
+                    });
                   }}
                   onDragLeave={() => {
                     if (timelineCanvasRef.current) {

@@ -100,6 +100,10 @@ class Timeline extends EventEmitter<TimelineCanvasEvents> {
   #transitionButton: TransitionButton | null = null;
   #transitionPlaceholder: TransitionPlaceholder | null = null;
 
+  // Optimized cache for spatial lookups (lazy-memoized)
+  #trackCache = new Map<string, { ids: string; sorted: IClip[]; transitions: IClip[] }>();
+  #lastPlaceholderArgs: string = "";
+
   // Bound event handlers (business-logic level — delegated from handlers/)
   #onDragging: (opt: any) => void;
   #onTrackRelocation: (opt: any) => void;
@@ -272,10 +276,9 @@ class Timeline extends EventEmitter<TimelineCanvasEvents> {
     const trackData = this.#tracks.find((t) => t.id === track.id);
     if (!trackData) return null;
 
-    for (const clipId of trackData.clipIds) {
-      const clip = this.#clipsMap[clipId];
-      if (!clip || clip.type !== "Transition") continue;
+    const { transitions } = this._getTrackDataForJunction(track.id, trackData.clipIds);
 
+    for (const clip of transitions) {
       const tc = clip as any;
       const startX =
         (clip.display.from / MICROSECONDS_PER_SECOND) *
@@ -297,6 +300,28 @@ class Timeline extends EventEmitter<TimelineCanvasEvents> {
 
     return null;
   }
+
+  private _getTrackDataForJunction(
+    trackId: string,
+    clipIds: string[],
+  ): { sorted: IClip[]; transitions: IClip[] } {
+    const idsString = clipIds.join(",");
+    const cached = this.#trackCache.get(trackId);
+    if (cached && cached.ids === idsString) {
+      return cached;
+    }
+
+    const allClips = clipIds.map((id) => this.#clipsMap[id]).filter((c) => !!c);
+    const sorted = allClips
+      .filter((c) => c.type !== "Transition")
+      .sort((a, b) => a.display.from - b.display.from);
+    const transitions = allClips.filter((c) => c.type === "Transition");
+
+    const entry = { ids: idsString, sorted, transitions };
+    this.#trackCache.set(trackId, entry);
+    return entry;
+  }
+
   private handleMouseMove(opt: any) {
     const pointer = this.canvas.getPointer(opt.e);
     const x = pointer.x;
@@ -342,10 +367,7 @@ class Timeline extends EventEmitter<TimelineCanvasEvents> {
     const trackData = this.#tracks.find((t) => t.id === track.id);
     if (!trackData) return null;
 
-    const clipsAtTrack = trackData.clipIds
-      .map((id) => this.#clipsMap[id])
-      .filter((c) => !!c && c.type !== "Transition")
-      .sort((a, b) => a.display.from - b.display.from);
+    const { sorted: clipsAtTrack } = this._getTrackDataForJunction(track.id, trackData.clipIds);
 
     const TRANSITION_POINT_THRESHOLD = 10; // Pixels
 
@@ -367,7 +389,7 @@ class Timeline extends EventEmitter<TimelineCanvasEvents> {
       const junctionX = (endXA + startXB) / 2;
 
       if (Math.abs(x - junctionX) < TRANSITION_POINT_THRESHOLD) {
-        if (this.isValidJunction(clipA, clipB, junctionX, trackData, options)) {
+        if (this.isValidJunction(clipA, clipB, junctionX, track.id, trackData.clipIds, options)) {
           return { x: junctionX, clipA, clipB, trackId: track.id, track };
         }
       }
@@ -400,7 +422,16 @@ class Timeline extends EventEmitter<TimelineCanvasEvents> {
                     TIMELINE_CONSTANTS.PIXELS_PER_SECOND *
                     this.#timeScale) /
                 2;
-              if (this.isValidJunction(leftNeighbor, clip, junctionX, trackData, options)) {
+              if (
+                this.isValidJunction(
+                  leftNeighbor,
+                  clip,
+                  junctionX,
+                  track.id,
+                  trackData.clipIds,
+                  options,
+                )
+              ) {
                 return {
                   x: junctionX,
                   clipA: leftNeighbor,
@@ -417,7 +448,16 @@ class Timeline extends EventEmitter<TimelineCanvasEvents> {
                     TIMELINE_CONSTANTS.PIXELS_PER_SECOND *
                     this.#timeScale) /
                 2;
-              if (this.isValidJunction(clip, rightNeighbor, junctionX, trackData, options)) {
+              if (
+                this.isValidJunction(
+                  clip,
+                  rightNeighbor,
+                  junctionX,
+                  track.id,
+                  trackData.clipIds,
+                  options,
+                )
+              ) {
                 return {
                   x: junctionX,
                   clipA: clip,
@@ -436,7 +476,16 @@ class Timeline extends EventEmitter<TimelineCanvasEvents> {
                     TIMELINE_CONSTANTS.PIXELS_PER_SECOND *
                     this.#timeScale) /
                 2;
-              if (this.isValidJunction(clip, rightNeighbor, junctionX, trackData, options)) {
+              if (
+                this.isValidJunction(
+                  clip,
+                  rightNeighbor,
+                  junctionX,
+                  track.id,
+                  trackData.clipIds,
+                  options,
+                )
+              ) {
                 return {
                   x: junctionX,
                   clipA: clip,
@@ -453,7 +502,16 @@ class Timeline extends EventEmitter<TimelineCanvasEvents> {
                     TIMELINE_CONSTANTS.PIXELS_PER_SECOND *
                     this.#timeScale) /
                 2;
-              if (this.isValidJunction(leftNeighbor, clip, junctionX, trackData, options)) {
+              if (
+                this.isValidJunction(
+                  leftNeighbor,
+                  clip,
+                  junctionX,
+                  track.id,
+                  trackData.clipIds,
+                  options,
+                )
+              ) {
                 return {
                   x: junctionX,
                   clipA: leftNeighbor,
@@ -475,7 +533,8 @@ class Timeline extends EventEmitter<TimelineCanvasEvents> {
     clipA: IClip,
     clipB: IClip,
     junctionX: number,
-    trackData: ITimelineTrack,
+    trackId: string,
+    trackClipIds: string[],
     options: { ignoreExisting?: boolean } = {},
   ): boolean {
     if (
@@ -484,9 +543,9 @@ class Timeline extends EventEmitter<TimelineCanvasEvents> {
     ) {
       if (options.ignoreExisting) return true;
 
-      const hasTransition = trackData.clipIds.some((id) => {
-        const c = this.#clipsMap[id];
-        if (!c || c.type !== "Transition") return false;
+      const { transitions } = this._getTrackDataForJunction(trackId, trackClipIds);
+
+      const hasTransition = transitions.some((c) => {
         const tStart =
           (c.display.from / MICROSECONDS_PER_SECOND) *
           TIMELINE_CONSTANTS.PIXELS_PER_SECOND *
@@ -553,6 +612,10 @@ class Timeline extends EventEmitter<TimelineCanvasEvents> {
   }
 
   public showTransitionPlaceholder(x: number, y: number, trackId: string, width: number) {
+    const args = `${x},${y},${trackId},${width}`;
+    if (this.#lastPlaceholderArgs === args) return;
+    this.#lastPlaceholderArgs = args;
+
     const track = this.#tracks.find((t) => t.id === trackId);
     const height = track ? getTrackHeight(track.type as any) : 52;
 
@@ -586,6 +649,7 @@ class Timeline extends EventEmitter<TimelineCanvasEvents> {
   }
 
   public clearTransitionButton() {
+    this.#lastPlaceholderArgs = ""; // Reset cache
     if (this.#transitionButton) {
       this.canvas.remove(this.#transitionButton);
       this.#transitionButton = null;

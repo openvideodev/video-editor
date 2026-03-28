@@ -25,7 +25,6 @@ type CustomPreset = {
 const LOADED_CACHE: Record<string, { static: boolean; dynamic: boolean }> = {};
 let LAST_SCROLL_POS = 0;
 
-// Optimized draggable item to prevent entire grid re-renders
 const DraggableTransitionItem = ({
   effect,
   loaded,
@@ -43,8 +42,39 @@ const DraggableTransitionItem = ({
     overTimeline: boolean;
   } | null>(null);
 
-  const timelineBounds = React.useRef<DOMRect | null>(null);
-  const rafRef = React.useRef<number | null>(null);
+  const timelineBoundsRef = React.useRef<DOMRect | null>(null);
+  const ghostRef = React.useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = React.useState(false);
+
+  // High-frequency drag tracking via global listener
+  React.useEffect(() => {
+    if (!isDragging) return;
+
+    const handleGlobalDrag = (e: DragEvent) => {
+      const x = e.clientX;
+      const y = e.clientY;
+
+      if (x === 0 && y === 0) return;
+
+      // Direct DOM manipulation for GPU-accelerated 60fps movement
+      if (ghostRef.current) {
+        ghostRef.current.style.transform = `translate3d(${x + 15}px, ${y + 15}px, 0)`;
+      }
+
+      const bounds = timelineBoundsRef.current;
+      const overTimeline = bounds
+        ? x >= bounds.left && x <= bounds.right && y >= bounds.top && y <= bounds.bottom
+        : false;
+
+      setDragState((prev) => {
+        if (prev && prev.overTimeline === overTimeline) return prev;
+        return { x, y, overTimeline };
+      });
+    };
+
+    document.addEventListener("dragover", handleGlobalDrag);
+    return () => document.removeEventListener("dragover", handleGlobalDrag);
+  }, [isDragging]);
 
   const isReady = loaded[effect.key]?.static && loaded[effect.key]?.dynamic;
 
@@ -63,46 +93,20 @@ const DraggableTransitionItem = ({
 
           // Cache timeline bounds for faster hit testing
           const el = document.getElementById("timeline-canvas");
-          if (el) timelineBounds.current = el.getBoundingClientRect();
+          if (el) timelineBoundsRef.current = el.getBoundingClientRect();
 
           setDragState({
             x: e.clientX,
             y: e.clientY,
             overTimeline: false,
           });
+          setIsDragging(true);
         }}
         onDrag={(e) => {
-          if (e.clientX === 0 && e.clientY === 0) return;
-
-          // Simple throttled update using requestAnimationFrame
-          if (rafRef.current) return;
-          rafRef.current = requestAnimationFrame(() => {
-            rafRef.current = null;
-            const bounds = timelineBounds.current;
-            const overTimeline = bounds
-              ? e.clientX >= bounds.left &&
-                e.clientX <= bounds.right &&
-                e.clientY >= bounds.top &&
-                e.clientY <= bounds.bottom
-              : false;
-
-            setDragState((prev) => {
-              if (
-                prev &&
-                prev.x === e.clientX &&
-                prev.y === e.clientY &&
-                prev.overTimeline === overTimeline
-              ) {
-                return prev;
-              }
-
-              return { x: e.clientX, y: e.clientY, overTimeline };
-            });
-          });
+          // No-op: handled by global dragover listener for high-frequency updates
         }}
         onDragEnd={() => {
-          if (rafRef.current) cancelAnimationFrame(rafRef.current);
-          rafRef.current = null;
+          setIsDragging(false);
           setDragState(null);
         }}
         className="flex w-full items-center gap-2 flex-col group cursor-pointer relative select-none"
@@ -138,10 +142,13 @@ const DraggableTransitionItem = ({
       {dragState &&
         createPortal(
           <div
+            ref={ghostRef}
             style={{
               position: "fixed",
-              left: dragState.x + 15,
-              top: dragState.y + 15,
+              left: 0,
+              top: 0,
+              transform: `translate3d(${dragState.x + 15}px, ${dragState.y + 15}px, 0)`,
+              willChange: "transform",
               pointerEvents: "none",
               zIndex: 99999,
             }}
