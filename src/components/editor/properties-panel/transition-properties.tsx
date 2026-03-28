@@ -25,6 +25,151 @@ type CustomPreset = {
 const LOADED_CACHE: Record<string, { static: boolean; dynamic: boolean }> = {};
 let LAST_SCROLL_POS = 0;
 
+// Optimized draggable item to prevent entire grid re-renders
+const DraggableTransitionItem = ({
+  effect,
+  loaded,
+  onLoaded,
+  onClick,
+}: {
+  effect: any;
+  loaded: any;
+  onLoaded: (key: string, type: "static" | "dynamic") => void;
+  onClick: () => void;
+}) => {
+  const [dragState, setDragState] = React.useState<{
+    x: number;
+    y: number;
+    overTimeline: boolean;
+  } | null>(null);
+
+  const timelineBounds = React.useRef<DOMRect | null>(null);
+  const rafRef = React.useRef<number | null>(null);
+
+  const isReady = loaded[effect.key]?.static && loaded[effect.key]?.dynamic;
+
+  return (
+    <>
+      <div
+        draggable
+        onDragStart={(e) => {
+          e.dataTransfer.setData("text/plain", effect.key);
+          e.dataTransfer.setData("type", "transition");
+
+          const img = new Image();
+          img.src =
+            "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+          e.dataTransfer.setDragImage(img, 0, 0);
+
+          // Cache timeline bounds for faster hit testing
+          const el = document.getElementById("timeline-canvas");
+          if (el) timelineBounds.current = el.getBoundingClientRect();
+
+          setDragState({
+            x: e.clientX,
+            y: e.clientY,
+            overTimeline: false,
+          });
+        }}
+        onDrag={(e) => {
+          if (e.clientX === 0 && e.clientY === 0) return;
+
+          // Simple throttled update using requestAnimationFrame
+          if (rafRef.current) return;
+          rafRef.current = requestAnimationFrame(() => {
+            rafRef.current = null;
+            const bounds = timelineBounds.current;
+            const overTimeline = bounds
+              ? e.clientX >= bounds.left &&
+                e.clientX <= bounds.right &&
+                e.clientY >= bounds.top &&
+                e.clientY <= bounds.bottom
+              : false;
+
+            setDragState((prev) => {
+              if (
+                prev &&
+                prev.x === e.clientX &&
+                prev.y === e.clientY &&
+                prev.overTimeline === overTimeline
+              ) {
+                return prev;
+              }
+
+              return { x: e.clientX, y: e.clientY, overTimeline };
+            });
+          });
+        }}
+        onDragEnd={() => {
+          if (rafRef.current) cancelAnimationFrame(rafRef.current);
+          rafRef.current = null;
+          setDragState(null);
+        }}
+        className="flex w-full items-center gap-2 flex-col group cursor-pointer relative select-none"
+        onClick={onClick}
+      >
+        <div className="relative w-full aspect-video rounded-md bg-input/30 border overflow-hidden">
+          {!isReady && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center">
+              <Loader2 className="animate-spin text-muted-foreground" />
+            </div>
+          )}
+
+          <img
+            src={effect.previewStatic}
+            onLoad={() => onLoaded(effect.key, "static")}
+            loading="lazy"
+            className="absolute inset-0 w-full h-full object-cover rounded-sm transition-opacity duration-150 opacity-100 group-hover:opacity-0"
+          />
+
+          <img
+            src={effect.previewDynamic}
+            onLoad={() => onLoaded(effect.key, "dynamic")}
+            loading="lazy"
+            className="absolute inset-0 w-full h-full object-cover rounded-sm transition-opacity duration-150 opacity-0 group-hover:opacity-100"
+          />
+
+          <div className="absolute bottom-0 left-0 w-full p-2 bg-gradient-to-t from-black/80 to-transparent text-white text-xs font-medium truncate text-center transition-opacity duration-150 group-hover:opacity-0">
+            {effect.label}
+          </div>
+        </div>
+      </div>
+
+      {dragState &&
+        createPortal(
+          <div
+            style={{
+              position: "fixed",
+              left: dragState.x + 15,
+              top: dragState.y + 15,
+              pointerEvents: "none",
+              zIndex: 99999,
+            }}
+          >
+            {dragState.overTimeline ? (
+              <div className="w-12 h-12 bg-black rounded flex items-center justify-center opacity-90 shadow-lg">
+                <Icons.transition className="text-white w-6 h-6" />
+              </div>
+            ) : (
+              <div className="w-20 aspect-video rounded-md bg-input/80 border overflow-hidden shadow-xl relative">
+                {effect.previewStatic && (
+                  <img
+                    src={effect.previewStatic}
+                    className="w-full h-full object-cover rounded-sm"
+                  />
+                )}
+                <div className="absolute bottom-0 left-0 w-full p-1 bg-gradient-to-t from-black/80 to-transparent text-white text-[10px] font-medium truncate text-center">
+                  {effect.label}
+                </div>
+              </div>
+            )}
+          </div>,
+          document.body,
+        )}
+    </>
+  );
+};
+
 export function TransitionProperties({ clip }: TransitionPropertiesProps) {
   const transitionClip = clip as any;
   const { studio, selectedClips } = useStudioStore();
@@ -32,12 +177,6 @@ export function TransitionProperties({ clip }: TransitionPropertiesProps) {
 
   const [loaded, setLoaded] = React.useState(LOADED_CACHE);
   const [localDuration, setLocalDuration] = React.useState(transitionClip.duration / 1_000_000);
-  const [dragState, setDragState] = React.useState<{
-    x: number;
-    y: number;
-    overTimeline: boolean;
-    effect: any;
-  } | null>(null);
 
   React.useEffect(() => {
     setLocalDuration(transitionClip.duration / 1_000_000);
@@ -148,115 +287,16 @@ export function TransitionProperties({ clip }: TransitionPropertiesProps) {
   const renderTransitionList = (list: typeof allTransitions) => (
     <>
       <div className="grid grid-cols-[repeat(auto-fill,minmax(92px,1fr))] gap-2.5 justify-items-center p-2 transition-all duration-200">
-        {list.map((effect) => {
-          const isReady = loaded[effect.key]?.static && loaded[effect.key]?.dynamic;
-
-          return (
-            <div
-              key={effect.key}
-              draggable
-              onDragStart={(e) => {
-                e.dataTransfer.setData("text/plain", effect.key);
-                e.dataTransfer.setData("type", "transition");
-
-                const img = new Image();
-                img.src =
-                  "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
-                e.dataTransfer.setDragImage(img, 0, 0);
-
-                setDragState({
-                  x: e.clientX,
-                  y: e.clientY,
-                  overTimeline: false,
-                  effect,
-                });
-              }}
-              onDrag={(e) => {
-                if (e.clientX === 0 && e.clientY === 0) return;
-
-                const elements = document.elementsFromPoint(e.clientX, e.clientY);
-
-                const overTimeline = elements.some((el) => el.id === "timeline-canvas");
-
-                setDragState((prev) =>
-                  prev
-                    ? {
-                        ...prev,
-                        x: e.clientX,
-                        y: e.clientY,
-                        overTimeline,
-                      }
-                    : null,
-                );
-              }}
-              onDragEnd={() => setDragState(null)}
-              className="flex w-full items-center gap-2 flex-col group cursor-pointer relative select-none"
-              onClick={() => {
-                if (!studio) return;
-                handleUpdate({ key: effect.key });
-              }}
-            >
-              <div className="relative w-full aspect-video rounded-md bg-input/30 border overflow-hidden">
-                {!isReady && (
-                  <div className="absolute inset-0 z-10 flex items-center justify-center">
-                    <Loader2 className="animate-spin text-muted-foreground" />
-                  </div>
-                )}
-
-                <img
-                  src={effect.previewStatic}
-                  onLoad={() => markLoaded(effect.key, "static")}
-                  loading="lazy"
-                  className="absolute inset-0 w-full h-full object-cover rounded-sm transition-opacity duration-150 opacity-100 group-hover:opacity-0"
-                />
-
-                <img
-                  src={effect.previewDynamic}
-                  onLoad={() => markLoaded(effect.key, "dynamic")}
-                  loading="lazy"
-                  className="absolute inset-0 w-full h-full object-cover rounded-sm transition-opacity duration-150 opacity-0 group-hover:opacity-100"
-                />
-
-                <div className="absolute bottom-0 left-0 w-full p-2 bg-gradient-to-t from-black/80 to-transparent text-white text-xs font-medium truncate text-center transition-opacity duration-150 group-hover:opacity-0">
-                  {effect.label}
-                </div>
-              </div>
-            </div>
-          );
-        })}
+        {list.map((effect) => (
+          <DraggableTransitionItem
+            key={effect.key}
+            effect={effect}
+            loaded={loaded}
+            onLoaded={markLoaded}
+            onClick={() => handleUpdate({ key: effect.key })}
+          />
+        ))}
       </div>
-
-      {dragState &&
-        createPortal(
-          <div
-            style={{
-              position: "fixed",
-              left: dragState.x + 15,
-              top: dragState.y + 15,
-              pointerEvents: "none",
-              zIndex: 99999,
-            }}
-          >
-            {dragState.overTimeline ? (
-              <div className="w-12 h-12 bg-black rounded flex items-center justify-center opacity-90 shadow-lg">
-                <Icons.transition className="text-white w-6 h-6" />
-              </div>
-            ) : (
-              <div className="w-20 aspect-video rounded-md bg-input/80 border overflow-hidden shadow-xl relative">
-                {dragState.effect?.previewStatic && (
-                  <img
-                    src={dragState.effect.previewStatic}
-                    className="w-full h-full object-cover rounded-sm"
-                  />
-                )}
-                <div className="absolute bottom-0 left-0 w-full p-1 bg-gradient-to-t from-black/80 to-transparent text-white text-[10px] font-medium truncate text-center">
-                  {dragState.effect?.label}
-                </div>
-              </div>
-            )}
-          </div>,
-          document.body,
-        )}
     </>
   );
 

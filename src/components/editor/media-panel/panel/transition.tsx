@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useStudioStore } from "@/stores/studio-store";
@@ -53,6 +53,9 @@ const TransitionCard = ({
     overTimeline: boolean;
   } | null>(null);
 
+  const timelineBoundsRef = useRef<DOMRect | null>(null);
+  const rafRef = useRef<number | null>(null);
+
   return (
     <>
       <div
@@ -64,15 +67,45 @@ const TransitionCard = ({
           img.src =
             "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
           e.dataTransfer.setDragImage(img, 0, 0);
+
+          const el = document.getElementById("timeline-canvas");
+          if (el) timelineBoundsRef.current = el.getBoundingClientRect();
+
           setDragState({ x: e.clientX, y: e.clientY, overTimeline: false });
         }}
         onDrag={(e) => {
           if (e.clientX === 0 && e.clientY === 0) return;
-          const elements = document.elementsFromPoint(e.clientX, e.clientY);
-          const overTimeline = elements.some((el) => el.id === "timeline-canvas");
-          setDragState({ x: e.clientX, y: e.clientY, overTimeline });
+
+          if (rafRef.current) return;
+          rafRef.current = requestAnimationFrame(() => {
+            rafRef.current = null;
+            const bounds = timelineBoundsRef.current;
+            const overTimeline = bounds
+              ? e.clientX >= bounds.left &&
+                e.clientX <= bounds.right &&
+                e.clientY >= bounds.top &&
+                e.clientY <= bounds.bottom
+              : false;
+
+            setDragState((prev) => {
+              if (
+                prev &&
+                prev.x === e.clientX &&
+                prev.y === e.clientY &&
+                prev.overTimeline === overTimeline
+              ) {
+                return prev;
+              }
+
+              return { x: e.clientX, y: e.clientY, overTimeline };
+            });
+          });
         }}
-        onDragEnd={() => setDragState(null)}
+        onDragEnd={() => {
+          if (rafRef.current) cancelAnimationFrame(rafRef.current);
+          rafRef.current = null;
+          setDragState(null);
+        }}
         className="flex w-full items-center gap-2 flex-col group cursor-pointer"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
