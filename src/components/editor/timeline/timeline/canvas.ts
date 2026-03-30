@@ -159,8 +159,10 @@ class Timeline extends EventEmitter<TimelineCanvasEvents> {
       width: clientWidth,
       height: clientHeight,
       selection: true,
+      selectionColor: "rgba(10, 189, 227, 0.2)",
+      selectionBorderColor: "#0abde3",
+      selectionLineWidth: 2,
       renderOnAddRemove: false, // Performance optimization
-      preserveObjectStacking: true,
     });
 
     // Delegate all low-level pointer/wheel input to the controller
