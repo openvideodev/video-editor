@@ -12,7 +12,6 @@ const MICROSECONDS_IN_SECOND = 1_000_000;
 const DEFAULT_THUMBNAIL_HEIGHT = 52;
 const DEFAULT_ASPECT_RATIO = 16 / 9;
 const FALLBACK_COLOR = "#1e1b4b"; // Deep Indigo
-const THUMBNAIL_STEP_US = 1_000_000; // 1fps
 
 export class Video extends BaseTimelineClip {
   static createControls(): { controls: Record<string, Control> } {
@@ -51,17 +50,18 @@ export class Video extends BaseTimelineClip {
     this.initialize();
   }
 
-  set(key: string, value: any) {
-    if (key === "width") {
-      // Re-initialize dimensions and thumbnails if width changes (e.g. zoom, trim)
-      // Debounce this if it happens too often during drag, but for now simple trigger
-      if (this.width !== value) {
-        // We'll handle resize logic in setters or observers if needed,
-        // but for now initialize handles initial setup.
-        // If we are resizing, we might need to fetch more thumbnails.
-      }
+  set(...args: any[]) {
+    const prev = this.trim ?? { from: 0, to: 0 };
+    const prevTrim = { from: prev.from, to: prev.to };
+    const ret = (super.set as (...a: any[]) => any).apply(this, args);
+    if (!this.trim) {
+      this.trim = { from: 0, to: 0 };
     }
-    return super.set(key, value);
+    const t = this.trim;
+    if (t.from !== prevTrim.from || t.to !== prevTrim.to) {
+      void this.loadAndRenderThumbnails();
+    }
+    return ret;
   }
 
   public initDimensions() {
@@ -117,13 +117,15 @@ export class Video extends BaseTimelineClip {
   }
 
   public async loadAndRenderThumbnails() {
-    if (this._isFetchingThumbnails) return;
-
     const studio = useStudioStore.getState().studio;
     if (!studio || !this.studioClipId) return;
 
     const clip = studio.getClipById(this.studioClipId);
     if (!clip || clip.type !== "Video") return;
+
+    this._thumbAborter?.abort();
+    this._thumbAborter = new AbortController();
+    const { signal } = this._thumbAborter;
 
     const videoClip = clip as VideoClip;
 
@@ -157,9 +159,7 @@ export class Video extends BaseTimelineClip {
       this.createFallbackPattern();
     }
 
-    this._thumbAborter?.abort();
-    this._thumbAborter = new AbortController();
-    const { signal } = this._thumbAborter;
+    if (signal.aborted) return;
     this._isFetchingThumbnails = true;
 
     const stepUs = MICROSECONDS_IN_SECOND;
@@ -189,8 +189,12 @@ export class Video extends BaseTimelineClip {
         return;
       }
 
-      const cacheBatch = thumbnailsArr.map((t, i) => {
-        return { key: i, img: t.img };
+      this._thumbnailCache.clearCacheButFallback();
+
+      const cacheBatch = thumbnailsArr.map((thumb, i) => {
+        const ts = timestamps[i] ?? startUs + i * stepUs;
+        const key = Math.floor(ts / MICROSECONDS_IN_SECOND);
+        return { key, img: thumb.img };
       });
 
       await this.loadThumbnailBatch(cacheBatch);
