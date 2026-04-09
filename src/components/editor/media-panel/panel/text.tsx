@@ -103,7 +103,7 @@ export default function PanelText() {
     if (!studio) return;
 
     try {
-      const textClip = new Text(preset ? preset.description : "Add Text pro", {
+      const textClip = new Text(preset ? preset.description : "Add Text", {
         fontSize: preset?.style.fontSize || 124,
         fontFamily: preset?.style.fontFamily || "Arial",
         align: "center",
@@ -113,7 +113,7 @@ export default function PanelText() {
         stroke: (preset?.style as any)?.stroke || undefined,
         dropShadow: (preset?.style as any)?.dropShadow || undefined,
         wordWrap: true,
-        wordWrapWidth: 800,
+        wordWrapWidth: 600,
         fontUrl: (preset?.style as any)?.fontUrl,
       });
       textClip.name = preset ? preset.name : "Text";

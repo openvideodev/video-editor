@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo } from "react";
+import { useEffect, useRef, useMemo, useState } from "react";
 import { Studio, fontManager, registerCustomTransition, registerCustomEffect } from "openvideo";
 import { useTheme } from "next-themes";
 import { useStudioStore } from "@/stores/studio-store";
@@ -7,6 +7,7 @@ import { editorFont } from "./constants";
 import { CUSTOM_TRANSITIONS } from "./transition-custom";
 import { CUSTOM_EFFECTS } from "./effect-custom";
 import { SelectionFloatingMenu } from "./selection-floating-menu";
+import { TextEditorOverlay } from "./text-editor-overlay";
 import { useClipActions } from "./options-floating-menu";
 import {
   ContextMenu,
@@ -53,6 +54,7 @@ export function CanvasPanel({ onReady }: CanvasPanelProps) {
     handleToggleLock,
     handleDelete,
   } = useClipActions();
+  const [editingClip, setEditingClip] = useState<any | null>(null);
 
   const bgColor = useMemo(() => {
     const currentTheme = theme === "system" ? resolvedTheme : theme;
@@ -179,16 +181,23 @@ export function CanvasPanel({ onReady }: CanvasPanelProps) {
 
     const handleClear = () => {
       setSelectedClips([]);
+      setEditingClip(null);
+    };
+
+    const handleDblClick = ({ clip }: { clip: any }) => {
+      setEditingClip(clip);
     };
 
     studio.on("selection:created", handleSelection);
     studio.on("selection:updated", handleSelection);
     studio.on("selection:cleared", handleClear);
+    studio.on("clip:dblclick", handleDblClick);
 
     return () => {
       studio.off("selection:created", handleSelection);
       studio.off("selection:updated", handleSelection);
       studio.off("selection:cleared", handleClear);
+      studio.off("clip:dblclick", handleDblClick);
     };
   }, [setSelectedClips]);
 
@@ -235,6 +244,9 @@ export function CanvasPanel({ onReady }: CanvasPanelProps) {
               tabIndex={0}
             />
             <SelectionFloatingMenu />
+            {editingClip && (
+              <TextEditorOverlay clip={editingClip} onClose={() => setEditingClip(null)} />
+            )}
           </div>
         </div>
       </ContextMenuTrigger>

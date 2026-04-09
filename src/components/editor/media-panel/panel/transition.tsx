@@ -27,6 +27,46 @@ type CustomPreset = {
   userId: string;
 };
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Finds the first junction between two adjacent "media" clips (Video or Image)
+ * across all Video tracks, sorted by start time.
+ */
+const findFirstMediaClipUnion = (studio: any) => {
+  const tracks = studio.getTracks().filter((t: any) => t.type === "Video" || t.type === "Image");
+  const unions: { fromId: string; toId: string; start: number; duration: number }[] = [];
+
+  for (const track of tracks) {
+    const clips = track.clipIds
+      .map((id: string) => studio.getClipById(id))
+      .filter((c: any) => c && (c.type === "Video" || c.type === "Image"))
+      .sort((a: any, b: any) => a.display.from - b.display.from);
+
+    for (let i = 0; i < clips.length - 1; i++) {
+      const current = clips[i];
+      const next = clips[i + 1];
+
+      // Check if they are adjacent (allowing for a small 100ms tolerance for sub-frame gaps)
+      const gap = Math.abs(next.display.from - current.display.to);
+      if (gap < 100_000) {
+        const duration = Math.min(current.duration, next.duration) * 0.25;
+        unions.push({
+          fromId: current.id,
+          toId: next.id,
+          start: current.display.to,
+          duration,
+        });
+      }
+    }
+  }
+
+  if (unions.length === 0) return null;
+
+  // Return the one that starts earliest
+  return unions.sort((a, b) => a.start - b.start)[0];
+};
+
 // ─── Shared card for built-in transitions ─────────────────────────────────────
 
 type TransitionCardProps = {
@@ -210,7 +250,12 @@ const TransitionDefault = () => {
           previewDynamic={effect.previewDynamic}
           onClick={() => {
             if (!studio) return;
-            studio.addTransition(effect.key, TRANSITION_DURATION_DEFAULT);
+            const union = findFirstMediaClipUnion(studio);
+            if (union) {
+              studio.addTransition(effect.key, union.duration, union.fromId, union.toId);
+            } else {
+              studio.addTransition(effect.key, TRANSITION_DURATION_DEFAULT);
+            }
           }}
         />
       ))}
@@ -256,7 +301,13 @@ const TransitionCustom = () => {
       label: preset.data.label || preset.name,
       fragment: preset.data.fragment,
     } as any);
-    studio.addTransition(key, TRANSITION_DURATION_DEFAULT);
+
+    const union = findFirstMediaClipUnion(studio);
+    if (union) {
+      studio.addTransition(key, union.duration, union.fromId, union.toId);
+    } else {
+      studio.addTransition(key, TRANSITION_DURATION_DEFAULT);
+    }
   };
 
   if (isLoading) {
