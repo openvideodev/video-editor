@@ -10,7 +10,7 @@ import {
   ColorPickerSelection,
 } from "@/components/ui/color-picker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { IClip, AnimationOptions, KeyframeData } from "openvideo";
+import { IClip } from "openvideo";
 import {
   IconAlignLeft,
   IconAlignCenter,
@@ -44,6 +44,8 @@ import color from "color";
 import { NumberInput } from "@/components/ui/number-input";
 import { Switch } from "@/components/ui/switch";
 import useLayoutStore from "../store/use-layout-store";
+import { Button } from "@/components/ui/button";
+import { ChevronRight } from "lucide-react";
 
 interface VideoPropertiesProps {
   clip: IClip;
@@ -278,6 +280,26 @@ export function VideoProperties({ clip }: VideoPropertiesProps) {
               <span className="text-[10px] text-muted-foreground">%</span>
             </InputGroupAddon>
           </InputGroup>
+        </div>
+      </div>
+
+      {/* Color Adjustment Section */}
+
+      <div className="flex flex-col gap-2">
+        <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+          Color Adjustments
+        </label>
+        <div className="relative w-full">
+          <Button
+            className="flex w-full items-center justify-between text-sm border bg-input/30 h-9"
+            variant="secondary"
+            onClick={() => setFloatingControl("color-adjustment", { clipId: videoClip.id })}
+          >
+            <div className="w-full text-left">
+              <p className="truncate">Basic, HSL, Curves</p>
+            </div>
+            <ChevronRight className="text-muted-foreground" size={14} />
+          </Button>
         </div>
       </div>
 
