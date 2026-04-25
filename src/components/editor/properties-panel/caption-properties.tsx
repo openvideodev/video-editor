@@ -108,7 +108,13 @@ export function CaptionProperties({ clip }: CaptionPropertiesProps) {
         (clip as any).opts.keyword = colorUpdates.keyword;
       }
       Object.assign((clip as any).caption.colors, colorUpdates);
-      clip.emit("propsChange", {});
+      if (typeof (clip as any).refreshCaptions === "function") {
+        (clip as any).refreshCaptions().then(() => {
+          clip.emit("propsChange", {});
+        });
+      } else {
+        clip.emit("propsChange", {});
+      }
     }
 
     studio.emit("propsChange", {});
