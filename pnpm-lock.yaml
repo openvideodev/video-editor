@@ -24,14 +24,14 @@ importers:
         specifier: ^1.1.6
         version: 1.1.6(react@19.2.0)
       '@openvideo/core':
-        specifier: 1.0.6
-        version: 1.0.6(@types/react@19.2.8)(immer@10.2.0)(react@19.2.0)(use-sync-external-store@1.6.0(react@19.2.0))
+        specifier: 1.1.2
+        version: 1.1.2(@types/react@19.2.8)(immer@10.2.0)(react@19.2.0)(use-sync-external-store@1.6.0(react@19.2.0))
       '@openvideo/engine-pixi':
-        specifier: 1.0.6
-        version: 1.0.6(@types/react@19.2.8)(immer@10.2.0)(react@19.2.0)(use-sync-external-store@1.6.0(react@19.2.0))(yoga-layout@3.2.1)
+        specifier: 1.1.2
+        version: 1.1.2(@types/react@19.2.8)(immer@10.2.0)(react@19.2.0)(use-sync-external-store@1.6.0(react@19.2.0))(yoga-layout@3.2.1)
       '@openvideo/timeline':
-        specifier: 1.0.6
-        version: 1.0.6(@types/lodash-es@4.17.12)(@types/react@19.2.8)(react@19.2.0)(use-sync-external-store@1.6.0(react@19.2.0))
+        specifier: 1.1.2
+        version: 1.1.2(@types/lodash-es@4.17.12)(@types/react@19.2.8)(react@19.2.0)(use-sync-external-store@1.6.0(react@19.2.0))
       '@radix-ui/react-avatar':
         specifier: ^1.1.11
         version: 1.1.11(@types/react-dom@19.2.3(@types/react@19.2.8))(@types/react@19.2.8)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -868,14 +868,14 @@ packages:
   '@open-draft/until@2.1.0':
     resolution: {integrity: sha512-U69T3ItWHvLwGg5eJ0n3I62nWuE6ilHlmz7zM0npLBRvPRd7e6NYmg54vvRtP5mZG7kZqZCFVdsTWo7BPtBujg==}
 
-  '@openvideo/core@1.0.6':
-    resolution: {integrity: sha512-eciTe2bn0IdE1A6Mm6G1tUfu8l4JZV+tkGcfR25q7uQOvufpmGppC4DJ50V/Qpmf+Oi8gDLrTidv7+EljYYxkg==}
+  '@openvideo/core@1.1.2':
+    resolution: {integrity: sha512-qK4B+VU9vbxWmc96rCAmFSVg6l44bJJuOh2T+zceeWGmJ73psfp/tgwlInAuHBDNgbfjHNuc5E158ASgXDKtYQ==}
 
-  '@openvideo/engine-pixi@1.0.6':
-    resolution: {integrity: sha512-tkTqPXDvEsp1eV+fmnx+FZiQiJlAhgL/iVIASFw0o9atPYVAJw4R00Q1syvz5F04DJvoa4dDk0GZdTjOROBsnw==}
+  '@openvideo/engine-pixi@1.1.2':
+    resolution: {integrity: sha512-13IgKl3ikBD/c/JfplIZ4C3G1LsZXzexIrI73CFqxaldsrJ7BIlHidqSQKRKHUN932KUCV3f9NW/+GVhf/KiUg==}
 
-  '@openvideo/timeline@1.0.6':
-    resolution: {integrity: sha512-y7vaIm3HGTBn4lGd6XL2KsmM4WKbf31rAEUGHrN2UOBpRrRRjGwOKOp6O9QKVdUKVqRYsNbVYLgNXE8SebMJjg==}
+  '@openvideo/timeline@1.1.2':
+    resolution: {integrity: sha512-OIiYBPVE/MFhiE4euY7LreUBW5GjzsbwRET62Fl7iRklDKZ5i5UIyRVP2ZhboNSLJwr0XExDWfxZAOieQft4XA==}
     peerDependencies:
       '@types/lodash-es': ^4.17.12
 
@@ -5230,7 +5230,7 @@ snapshots:
 
   '@open-draft/until@2.1.0': {}
 
-  '@openvideo/core@1.0.6(@types/react@19.2.8)(immer@10.2.0)(react@19.2.0)(use-sync-external-store@1.6.0(react@19.2.0))':
+  '@openvideo/core@1.1.2(@types/react@19.2.8)(immer@10.2.0)(react@19.2.0)(use-sync-external-store@1.6.0(react@19.2.0))':
     dependencies:
       lodash-es: 4.18.1
       nanoid: 5.1.11
@@ -5241,9 +5241,9 @@ snapshots:
       - react
       - use-sync-external-store
 
-  '@openvideo/engine-pixi@1.0.6(@types/react@19.2.8)(immer@10.2.0)(react@19.2.0)(use-sync-external-store@1.6.0(react@19.2.0))(yoga-layout@3.2.1)':
+  '@openvideo/engine-pixi@1.1.2(@types/react@19.2.8)(immer@10.2.0)(react@19.2.0)(use-sync-external-store@1.6.0(react@19.2.0))(yoga-layout@3.2.1)':
     dependencies:
-      '@openvideo/core': 1.0.6(@types/react@19.2.8)(immer@10.2.0)(react@19.2.0)(use-sync-external-store@1.6.0(react@19.2.0))
+      '@openvideo/core': 1.1.2(@types/react@19.2.8)(immer@10.2.0)(react@19.2.0)(use-sync-external-store@1.6.0(react@19.2.0))
       '@pixi/layout': 3.2.0(@types/react@19.2.8)(pixi.js@8.18.1)(react@19.2.0)(yoga-layout@3.2.1)
       gl-transitions: 1.67.0
       gsap: 3.15.0
@@ -5262,9 +5262,9 @@ snapshots:
       - use-sync-external-store
       - yoga-layout
 
-  '@openvideo/timeline@1.0.6(@types/lodash-es@4.17.12)(@types/react@19.2.8)(react@19.2.0)(use-sync-external-store@1.6.0(react@19.2.0))':
+  '@openvideo/timeline@1.1.2(@types/lodash-es@4.17.12)(@types/react@19.2.8)(react@19.2.0)(use-sync-external-store@1.6.0(react@19.2.0))':
     dependencies:
-      '@openvideo/core': 1.0.6(@types/react@19.2.8)(immer@10.2.0)(react@19.2.0)(use-sync-external-store@1.6.0(react@19.2.0))
+      '@openvideo/core': 1.1.2(@types/react@19.2.8)(immer@10.2.0)(react@19.2.0)(use-sync-external-store@1.6.0(react@19.2.0))
       '@types/lodash-es': 4.17.12
       fabric: 6.9.1
       immer: 10.2.0
