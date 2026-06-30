@@ -15,6 +15,7 @@ import { nanoid } from "nanoid";
  * Connects the Studio instance to the Store and Timeline.
  */
 export const addStudioSync = (studio: Studio, timeline: CanvasTimeline): (() => void) => {
+  console.log("Adding studio sync with Core-First flow");
   // --- 1. ENGINES -> CORE (Interaction Capture) ---
 
   // Captures changes from Studio (e.g. property panel or direct canvas edits)
@@ -33,13 +34,14 @@ export const addStudioSync = (studio: Studio, timeline: CanvasTimeline): (() => 
 
   // Captures timeline seek events
   const handleTimelineSeek = ({ payload }: any) => {
-    core.seek(payload.time);
+    projectStore.getState().seek(payload.time);
   };
 
   timeline.emitter.on(TIMELINE_SEEK, handleTimelineSeek);
 
   // Timeline drop events → route through core.clip.add
   const handleAddClip = async ({ payload, options }: any) => {
+    console.log("timeline add event: ", { payload, options });
     await core.clip.add(payload, options);
   };
 
@@ -49,6 +51,7 @@ export const addStudioSync = (studio: Studio, timeline: CanvasTimeline): (() => 
   timeline.emitter.on("add:text", handleAddClip);
   timeline.emitter.on("add:transition", handleAddClip);
   timeline.emitter.on("add:effect", handleAddClip);
+  timeline.emitter.on("add:shape", handleAddClip);
 
   // --- 2. CORE -> ENGINES (Reconciliation via store subscription) ---
   // The StudioBridge + TimelineBridge handle patch-driven reconciliation.
@@ -88,6 +91,7 @@ export const addStudioSync = (studio: Studio, timeline: CanvasTimeline): (() => 
     timeline.emitter.off("add:text", handleAddClip);
     timeline.emitter.off("add:transition", handleAddClip);
     timeline.emitter.off("add:effect", handleAddClip);
+    timeline.emitter.off("add:shape", handleAddClip);
     unsubCore();
   };
 };

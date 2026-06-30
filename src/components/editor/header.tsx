@@ -1,280 +1,234 @@
 "use client";
-import { useState } from "react";
-import { cn } from "@/lib/utils";
-import { IconShare } from "@tabler/icons-react";
-import { Button } from "@/components/ui/button";
-import { useStudioStore } from "@/stores/studio-store";
-import { usePanelStore } from "@/stores/panel-store";
+
+import { useState, useEffect } from "react";
 import { useProjectStore } from "@/stores/project-store";
-import { fontManager, Log, type IClip } from "@openvideo/engine-pixi";
-import { ExportModal } from "./export-modal";
-import { LogoIcons } from "../shared/logos";
-import Link from "next/link";
-import { Icons } from "../shared/icons";
+import { usePanelStore } from "@/stores/panel-store";
+import { Button } from "@/components/ui/button";
+import { ExportPopover } from "./export-popover";
+import { TaskbarPopover } from "./taskbar-popover";
 import {
-  Keyboard,
-  FileJson,
-  Download,
-  Upload,
-  Settings,
-  Database,
-  FilePlus,
-  Square,
-  Smartphone,
-  Monitor,
-  ChevronLeft,
-} from "lucide-react";
-import { toast } from "sonner";
-import { ShortcutsModal } from "./shortcuts-modal";
-import { useEffect } from "react";
-import { useRouter, useParams } from "next/navigation";
-import AutosizeInput from "../ui/autosize-input";
-import { authClient } from "@/lib/auth-client";
-import { core, projectStore } from "@/lib/project";
-import { useStore } from "zustand";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuPortal,
+} from "@/components/ui/dropdown-menu";
+import { useTheme } from "next-themes";
+import {
+  RiArchiveDrawerLine,
+  RiSideBarLine,
+  RiHomeLine,
+  RiMenuLine,
+  RiLayout3Line,
+  RiMoonLine,
+  RiSunLine,
+  RiComputerLine,
+} from "@remixicon/react";
+import { RiLockLine, RiArrowDownSLine } from "@remixicon/react";
+import { core } from "@/lib/project";
+import { data } from "./data";
 
 export default function Header() {
-  const { studio } = useStudioStore();
-  const { aspectRatio, setCanvasSize } = useProjectStore();
-  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
-  const [isBatchExporting, setIsBatchExporting] = useState(false);
-  const [customWidth, setCustomWidth] = useState("");
-  const [customHeight, setCustomHeight] = useState("");
-  const router = useRouter();
-  const params = useParams();
-  const projectId = params.projectId as string;
-  const { data: session } = authClient.useSession();
-  const { projectName, setProjectName } = useProjectStore();
-  const [isSaving, setIsSaving] = useState(false);
-  const [title, setTitle] = useState(projectName || "Untitled video");
+  const { projectName, resetProject, setProjectName } = useProjectStore();
+  const [isExportOpen, setIsExportOpen] = useState(false);
+  const { theme, setTheme } = useTheme();
 
-  // Sync title with store when project name changes externally (like on initial load)
-  useEffect(() => {
-    if (projectName && projectName !== title) {
-      setTitle(projectName);
-    }
-  }, [projectName]);
+  const {
+    showLeftPanel,
+    showRightPanel,
+    showTimeline,
+    toggleLeftPanel,
+    toggleRightPanel,
+    toggleTimeline,
+    resetLayout,
+  } = usePanelStore();
 
-  const handleApplyCustomSize = () => {
-    const w = parseInt(customWidth);
-    const h = parseInt(customHeight);
-    if (!isNaN(w) && !isNaN(h) && w > 0 && h > 0) {
-      setCanvasSize({ width: w, height: h }, "Custom");
-    } else {
-      toast.error("Invalid dimensions");
-    }
-  };
-
-  const handleGetStarted = (route: string) => {
-    router.push(route);
-  };
-
-  const [isShortcutsModalOpen, setIsShortcutsModalOpen] = useState(false);
-  // Track undo/redo availability from Core store history
-  const canUndo = useStore(projectStore, (s) => s.history.length > 0);
-  const canRedo = useStore(projectStore, (s) => s.future.length > 0);
-
-  // NOTE: canUndo/canRedo state now sourced from core.store — no studio history listener needed.
-
-  // const handleSave = async (showToast = true) => {
-  //   if (!studio || !projectId) return;
-
-  //   setIsSaving(true);
-  //   let toastId;
-  //   if (showToast) {
-  //     toastId = toast.loading('Saving project...');
-  //   }
-
-  //   try {
-  //     const studioJSON = studio.exportToJSON();
-  //     await storageService.saveProjectFull(projectId, studioJSON);
-  //     console.log('Project saved', studioJSON);
-  //     if (showToast) {
-  //       toast.success('Project saved', { id: toastId });
-  //     }
-  //   } catch (error) {
-  //     console.error('Failed to save project', error);
-  //     if (showToast) {
-  //       toast.error('Failed to save project', { id: toastId });
-  //     }
-  //   } finally {
-  //     setIsSaving(false);
-  //   }
-  // };
-  // Auto-save on studio changes (with debounce)
-  // useEffect(() => {
-  //   if (!studio || !projectId) return;
-
-  //   let timeoutId: NodeJS.Timeout;
-
-  //   const onStudioChange = () => {
-  //     clearTimeout(timeoutId);
-  //     timeoutId = setTimeout(() => {
-  //       handleSave(false); // Silent save
-  //     }, 1000); // 1 second debounce
-  //   };
-  //   const eventsToListen = [
-  //     'history:changed',
-  //     'clip:added',
-  //     'clip:removed',
-  //     'clip:updated',
-  //     'clip:moved',
-  //     'track:added',
-  //     'track:removed',
-  //     'clips:removed',
-  //     'clip:replaced',
-  //     'clip:propsChange',
-  //     'propsChange',
-  //   ];
-
-  //   eventsToListen.forEach((event) => {
-  //     studio.on(event, onStudioChange);
-  //   });
-
-  //   return () => {
-  //     eventsToListen.forEach((event) => {
-  //       studio.off(event, onStudioChange);
-  //     });
-  //     clearTimeout(timeoutId);
-  //   };
-  // }, [studio, projectId]);
-
-  const handleNew = () => {
-    const confirmed = window.confirm(
-      "Are you sure you want to start a new project? Unsaved changes will be lost.",
-    );
-    if (confirmed) {
-      core.project.new();
-    }
+  const handleNewProject = () => {
+    resetProject();
+    core.project.new();
   };
 
   const handleExportJSON = () => {
     try {
-      const json = core.project.export();
-      if (Object.keys(json.clips).length === 0) {
-        alert("No clips to export");
-        return;
-      }
-
-      const jsonString = JSON.stringify(json, null, 2);
+      const projectData = core.project.export();
+      const jsonString = JSON.stringify(projectData, null, 2);
       const blob = new Blob([jsonString], { type: "application/json" });
       const url = URL.createObjectURL(blob);
-
-      const aEl = document.createElement("a");
-      document.body.appendChild(aEl);
-      aEl.href = url;
-      aEl.download = `${projectName || "project"}-${Date.now()}.json`;
-      aEl.click();
-
-      setTimeout(() => {
-        if (document.body.contains(aEl)) {
-          document.body.removeChild(aEl);
-        }
-        URL.revokeObjectURL(url);
-      }, 100);
-    } catch (error) {
-      Log.error("Export to JSON error:", error);
-      alert("Failed to export to JSON: " + (error as Error).message);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${projectName || "project"}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Failed to export project:", err);
     }
   };
 
-  const handleImportJSON = () => {
+  const handleLoadJSON = () => {
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = ".json,application/json";
-    input.style.display = "none";
-
+    input.accept = ".json";
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
 
       try {
         const text = await file.text();
-        const json = JSON.parse(text);
-        core.project.import(json);
-        toast.success("Project imported successfully");
-      } catch (error) {
-        Log.error("Load from JSON error:", error);
-        alert("Failed to load from JSON: " + (error as Error).message);
-      } finally {
-        if (document.body.contains(input)) {
-          document.body.removeChild(input);
-        }
+        const projectData = JSON.parse(text);
+
+        const name = projectData.name || file.name.replace(/\.json$/i, "");
+        setProjectName(name);
+
+        core.project.import(projectData);
+      } catch (err) {
+        console.error("Failed to load project JSON:", err);
+        alert("Invalid project file");
       }
     };
-
-    document.body.appendChild(input);
     input.click();
   };
 
-  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setTitle(e.target.value);
-  };
+  // Global keydown listener for Export (Ctrl+E / Cmd+E)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "e") {
+        e.preventDefault();
+        setIsExportOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   return (
-    <header className="relative flex h-[52px] w-full shrink-0 items-center justify-between px-4 bg-card z-10 border-b">
-      <div className="flex items-center gap-3">
-        <div
-          className="p-1 bg-secondary"
-          onClick={() => {
-            console.log(core.project.export());
-          }}
-        >
-          <LogoIcons.scenify className="h-6 w-6" />
+    <div className="h-13 border-b shrink-0">
+      <div className="h-full grid grid-cols-3 items-center px-4">
+        {/* Left Column: Home, Menu, View */}
+        <div className="flex items-center justify-start gap-0.5">
+          {/* Home Icon */}
+          <Button variant="ghost" size="icon">
+            <RiHomeLine className="size-4.5" />
+            <span className="sr-only">Home</span>
+          </Button>
+
+          {/* Menu Icon with Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <RiMenuLine className="size-4" />
+                <span className="sr-only">Menu</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-56 text-xs">
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className="text-xs">
+                  <span className="flex-1">Theme</span>
+                  {theme === "dark" ? (
+                    <RiMoonLine className="size-4 text-muted-foreground" />
+                  ) : theme === "light" ? (
+                    <RiSunLine className="size-4 text-muted-foreground" />
+                  ) : (
+                    <RiComputerLine className="size-4 text-muted-foreground" />
+                  )}
+                </DropdownMenuSubTrigger>
+                <DropdownMenuPortal>
+                  <DropdownMenuSubContent className="w-36 text-xs">
+                    <DropdownMenuItem className="text-xs" onClick={() => setTheme("light")}>
+                      <RiSunLine className="mr-2 size-4" />
+                      <span className="flex-1">Light</span>
+                      {theme === "light" && <span className="text-xs">✓</span>}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="text-xs" onClick={() => setTheme("dark")}>
+                      <RiMoonLine className="mr-2 size-4" />
+                      <span className="flex-1">Dark</span>
+                      {theme === "dark" && <span className="text-xs">✓</span>}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="text-xs" onClick={() => setTheme("system")}>
+                      <RiComputerLine className="mr-2 size-4" />
+                      <span className="flex-1">System</span>
+                      {theme === "system" && <span className="text-xs">✓</span>}
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuPortal>
+              </DropdownMenuSub>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-xs" onClick={handleNewProject}>
+                <span>New Project</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-xs" onClick={handleLoadJSON}>
+                <span>Load from JSON</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-xs" onClick={handleExportJSON}>
+                <span>Export to JSON</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* View Menu with Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="text-xs flex items-center gap-1">
+                <RiLayout3Line className="size-4" />
+                <span>View</span>
+                <RiArrowDownSLine className="size-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-56 text-xs">
+              <DropdownMenuItem className="text-xs" onClick={toggleLeftPanel}>
+                <span className="flex-1">Left Panel</span>
+                {showLeftPanel && <span className="text-xs">✓</span>}
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-xs" onClick={toggleRightPanel}>
+                <span className="flex-1">Right Panel</span>
+                {showRightPanel && <span className="text-xs">✓</span>}
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-xs" onClick={toggleTimeline}>
+                <span className="flex-1">Timeline</span>
+                {showTimeline && <span className="text-xs">✓</span>}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-xs" onClick={resetLayout}>
+                <span>Reset Layout</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
         </div>
-        <div className="pointer-events-auto flex h-10 items-center gap-2 rounded-md">
-          <AutosizeInput
-            name="title"
-            value={title}
-            onChange={handleTitleChange}
-            width={150}
-            inputClassName="border-none outline-none px-1 text-sm font-medium"
-          />
+
+
+        {/* Center Column: Project Space & Details */}
+        <div className="flex items-center justify-center gap-1.5 text-xs font-semibold">
+          <RiLockLine size={14} className=" shrink-0" />
+          <span className=" font-medium">Personal</span>
+          <span className="px-1">/</span>
+          <span className="text-foreground truncate max-w-[200px]">
+            {projectName || "Untitled video"}
+          </span>
+          <RiArrowDownSLine size={12} className="shrink-0 ml-0.5" />
+        </div>
+
+        {/* Right Column: Aspect Ratio and Export Button */}
+        <div className="flex items-center justify-end gap-2">
+          {/* Taskbar Button */}
+          <TaskbarPopover>
+            <RiArchiveDrawerLine className="size-4" />
+            <span className="sr-only">Tasks</span>
+          </TaskbarPopover>
+
+          {/* Export Button */}
+          <ExportPopover open={isExportOpen} onOpenChange={setIsExportOpen}>
+            <Button className="h-7 text-xs font-semibold px-3 rounded-md flex items-center gap-2">
+              <span>Export</span>
+            </Button>
+          </ExportPopover>
         </div>
       </div>
-
-      {/* Right Section */}
-      <div className="flex items-center gap-4 pr-4">
-        <div className="flex items-center">
-          <Button
-            onClick={() => core.undo()}
-            disabled={!canUndo}
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-          >
-            <Icons.undo className="size-4.5" />
-          </Button>
-          <Button
-            onClick={() => core.redo()}
-            disabled={!canRedo}
-            className="text-muted-foreground h-8 w-8"
-            variant="ghost"
-            size="icon"
-          >
-            <Icons.redo className="size-4.5" />
-          </Button>
-        </div>
-
-        <div className="flex items-center">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-foreground"
-            onClick={() => setIsShortcutsModalOpen(true)}
-          >
-            <Keyboard className="size-5" />
-          </Button>
-        </div>
-
-        <Button size="sm" className="gap-2 h-8 px-4" onClick={() => setIsExportModalOpen(true)}>
-          Download
-        </Button>
-
-        <ExportModal open={isExportModalOpen} onOpenChange={setIsExportModalOpen} />
-        <ShortcutsModal open={isShortcutsModalOpen} onOpenChange={setIsShortcutsModalOpen} />
-      </div>
-    </header>
+    </div>
   );
 }

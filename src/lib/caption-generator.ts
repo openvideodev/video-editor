@@ -104,16 +104,27 @@ export async function generateCaptionClips(options: CaptionClipOptions): Promise
     const captionHeight =
       Math.ceil(chunk.height) + (jumpLines + 1) * verticalPadding * 2 + 14 * (jumpLines + 1);
     const captionBottomPadding = 450 - (maxCaptionHeight - captionHeight) / 2;
+    const compactWords = chunk.words.map((w: any) => {
+      const word: any = {
+        text: w.text,
+        from: Math.round(w.from * 10) / 10,
+        to: Math.round(w.to * 10) / 10,
+      };
+      if (w.isKeyWord) word.isKeyWord = true;
+      if (w.paragraphIndex != null && w.paragraphIndex !== "" && w.paragraphIndex !== 0)
+        word.paragraphIndex = w.paragraphIndex;
+      return word;
+    });
+
     clips.push({
       type: "Caption",
-      src: "",
-      display: {
-        from: fromUs,
-        to: toUs,
+      timing: {
+        display: {
+          from: fromUs,
+          to: toUs,
+        },
       },
-      playbackRate: 1,
-      duration: durationUs,
-      left: (videoWidth - captionWidth) / 2, // Center horizontally
+      left: (videoWidth - captionWidth) / 2,
       top:
         options.style?.verticalAlign === "top"
           ? 80
@@ -122,47 +133,10 @@ export async function generateCaptionClips(options: CaptionClipOptions): Promise
             : videoHeight - captionBottomPadding,
       width: captionWidth,
       height: captionHeight,
-      angle: 0,
-      zIndex: 10,
-      opacity: 1,
-      flip: null,
       text: chunk.text,
-      style: options.style || {
-        fontSize: fontSize,
-        fontFamily: fontFamily,
-        fontWeight: "700",
-        fontStyle: "normal",
-        color: "#ffffff",
-        align: "center",
-        fontUrl: fontUrl,
-        stroke: {
-          color: "#000000",
-          width: 4,
-        },
-        shadow: {
-          color: "#000000",
-          alpha: 0.5,
-          blur: 4,
-          offsetX: 2,
-          offsetY: 2,
-        },
-      },
       caption: {
-        words: chunk.words,
-        colors: {
-          appeared: "#ffffff",
-          active: "#ffffff",
-          activeFill: "#FF5700",
-          background: "",
-          keyword: "#ffffff",
-        },
-        preserveKeywordColor: true,
-        positioning: {
-          videoWidth: videoWidth,
-          videoHeight: videoHeight,
-        },
+        words: compactWords,
       },
-      wordsPerLine: mode,
     });
   }
 

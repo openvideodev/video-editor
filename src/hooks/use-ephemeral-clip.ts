@@ -19,10 +19,12 @@ export function useEphemeralClip(clipId: string, baseClip: any) {
   useEffect(() => {
     if (!clipId || !studio) return;
 
-    const handleTransforming = (data: { clip: any }) => {
+    const handleTransforming = (data: { clip: any; ephemeral?: any }) => {
       if (data.clip?.id === clipId) {
-        // Extract properties that are changing
-        const { left, top, width, height, angle, scaleX, scaleY } = data.clip;
+        // Use ephemeral payload if provided (has live transform values from Pixi)
+        // Otherwise fall back to extracting from clip object
+        const ephemeral = data.ephemeral || data.clip;
+        const { left, top, width, height, angle, scaleX, scaleY } = ephemeral;
         setEphemeralUpdates({
           left,
           top,
@@ -35,9 +37,14 @@ export function useEphemeralClip(clipId: string, baseClip: any) {
       }
     };
 
-    const handleUpdated = (data: { id: string } | any) => {
-      const id = data.id || data.clip?.id;
-      if (id === clipId) {
+    const handleUpdated = (patches: any[]) => {
+      // Check if any patch affects our clip
+      const hasClipUpdate = patches?.some((patch: any) => {
+        // Match paths like /clips/clipId or /clips/clipId/property
+        const path = patch.path || "";
+        return path.startsWith(`/clips/${clipId}`);
+      });
+      if (hasClipUpdate) {
         setEphemeralUpdates(null);
       }
     };

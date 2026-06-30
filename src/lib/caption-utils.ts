@@ -16,10 +16,9 @@ interface RegenerateCaptionClipsOptions {
 
 const CUSTOM_ANIMATIONS_CAPTIONS = [
   "charTypewriter",
+  "appearByWord",
   "scaleMidCaption",
   "scaleDownCaption",
-  "upDownCaption",
-  "upLeftCaption",
   "fadeByWord",
   "slideFadeByWord",
 ];
@@ -63,18 +62,18 @@ export async function regenerateCaptionClips({
     });
   });
 
-  siblingClips.sort((a, b) => a.display.from - b.display.from);
+  siblingClips.sort((a, b) => a.timing.display.from - b.timing.display.from);
 
   if (siblingClips.length === 0) return;
 
   const mediaClip = clips[mediaId];
-  if (!mediaClip || !mediaClip.display) return;
+  if (!mediaClip) return;
 
-  const mediaStartUs = mediaClip.display.from;
+  const mediaStartUs = mediaClip.timing.display.from;
   const allWords: any[] = [];
 
   siblingClips.forEach((c) => {
-    const clipStartUs = c.display.from;
+    const clipStartUs = c.timing.display.from;
     const words = c.words || c.originalOpts?.words || c.originalOpts?.caption?.words || [];
     words.forEach((w: any) => {
       allWords.push({
@@ -142,24 +141,29 @@ export async function regenerateCaptionClips({
         ...(styleUpdate?.animation && {
           animations: getAnimationObjects(
             styleUpdate.animation,
-            json.display.to - json.display.from,
+            json.timing.display.to - json.timing.display.from,
           ),
         }),
         ...(styleUpdate?.wordAnimation ? { wordAnimation: styleUpdate.wordAnimation } : {}),
         ...(styleUpdate?.textBoxStyle ? { textBoxStyle: styleUpdate.textBoxStyle } : {}),
       },
       animations: styleUpdate?.animation
-        ? getAnimationObjects(styleUpdate.animation, json.display.to - json.display.from)
+        ? getAnimationObjects(
+            styleUpdate.animation,
+            json.timing.display.to - json.timing.display.from,
+          )
         : [],
-      display: {
-        from: json.display.from + mediaStartUs,
-        to: json.display.to + mediaStartUs,
+      timing: {
+        display: {
+          from: json.timing.display.from + mediaStartUs,
+          to: json.timing.display.to + mediaStartUs,
+        },
       },
     };
 
     // If styleUpdate contains other caption fields, ensure they are applied
     if (styleUpdate) {
-      if (styleUpdate.fill) enrichedJson.fill = styleUpdate.fill;
+      if (styleUpdate.color) enrichedJson.color = styleUpdate.color;
       if (styleUpdate.align) enrichedJson.align = styleUpdate.align;
       if (styleUpdate.fontFamily) enrichedJson.fontFamily = styleUpdate.fontFamily;
       if (styleUpdate.fontUrl) enrichedJson.fontUrl = styleUpdate.fontUrl;
@@ -177,13 +181,13 @@ export async function regenerateCaptionClips({
         if (styleUpdate.stroke) enrichedJson.stroke.color = styleUpdate.stroke;
       }
 
-      if (styleUpdate.dropShadow) {
-        enrichedJson.dropShadow = {
-          color: styleUpdate.dropShadow.color,
-          alpha: styleUpdate.dropShadow.alpha,
-          blur: styleUpdate.dropShadow.blur,
-          distance: styleUpdate.dropShadow.distance,
-          angle: styleUpdate.dropShadow.angle,
+      if (styleUpdate.shadow) {
+        enrichedJson.shadow = {
+          color: styleUpdate.shadow.color,
+          alpha: styleUpdate.shadow.alpha,
+          blur: styleUpdate.shadow.blur,
+          offsetX: styleUpdate.shadow.offsetX,
+          offsetY: styleUpdate.shadow.offsetY,
         };
       }
 

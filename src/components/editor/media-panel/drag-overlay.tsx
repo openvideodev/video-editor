@@ -1,5 +1,4 @@
-import { Upload, Plus, Image } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { RiUploadLine } from "@remixicon/react";
 
 interface MediaDragOverlayProps {
   isVisible: boolean;
@@ -27,11 +26,11 @@ export function MediaDragOverlay({
 
   return (
     <div
-      className="flex flex-col items-center justify-center gap-4 h-full text-center rounded-lg bg-foreground/5 hover:bg-foreground/10 transition-all duration-200 p-8"
+      className="flex flex-col items-center justify-center gap-4 h-full text-center bg-foreground/5 hover:bg-foreground/10 transition-all duration-200 p-8"
       onClick={handleClick}
     >
       <div className="flex items-center justify-center">
-        <Upload className="h-10 w-10 text-foreground" />
+        <RiUploadLine className="h-10 w-10 text-foreground" />
       </div>
 
       <div className="space-y-2">
@@ -44,9 +43,9 @@ export function MediaDragOverlay({
 
       {isProcessing && (
         <div className="w-full max-w-xs">
-          <div className="w-full bg-muted/50 rounded-full h-2">
+          <div className="w-full bg-muted/50 h-2">
             <div
-              className="bg-primary h-2 rounded-full transition-all duration-300"
+              className="bg-primary h-2 transition-all duration-300"
               style={{ width: `${progress}%` }}
             />
           </div>

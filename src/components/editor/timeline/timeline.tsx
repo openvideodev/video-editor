@@ -2,30 +2,25 @@ import { useEffect, useRef, useState } from "react";
 import { useStore } from "zustand";
 import Header from "./header";
 import Ruler from "./ruler";
-import { timeUsToUnits, unitsToTimeUs, TimelineBridge } from "@openvideo/timeline";
+import {
+  timeUsToUnits,
+  unitsToTimeUs,
+  TimelineBridge,
+  TimelineScrollbars,
+} from "@openvideo/timeline";
 import CanvasTimeline from "./items/timeline";
 import { useStudioStore } from "@/stores/studio-store";
 import { projectStore, core } from "@/lib/project";
 import Playhead from "./playhead";
-import {
-  Audio,
-  Image,
-  Text,
-  Video,
-  Caption,
-  Helper,
-  Track,
-  LinealAudioBars,
-  RadialAudioBars,
-  WaveAudioBars,
-  HillAudioBars,
-  Transition,
-} from "./items";
+import { useEditorHotkeys } from "@/hooks/use-editor-hotkeys";
+import { Audio, Image, Text, Video, Caption, Helper, Track, Transition, Backdrop } from "./items";
 import PreviewTrackItem from "./items/preview-drag-item";
 import { useTimelineOffsetX } from "../hooks/use-timeline-offset";
 import { addStudioSync } from "./studio-to-store-sync";
 import { TIMELINE_SCALE_CHANGED } from "@openvideo/timeline";
 import Effect from "./items/effect";
+import { useTimelineContextMenu, TimelineContextMenuProvider } from "./timeline-context-menu";
+import Shape from "./items/shape";
 
 CanvasTimeline.registerItems({
   Text,
@@ -36,12 +31,10 @@ CanvasTimeline.registerItems({
   Helper,
   Track,
   PreviewTrackItem,
-  LinealAudioBars,
-  RadialAudioBars,
-  WaveAudioBars,
-  HillAudioBars,
   Effect,
   Transition,
+  Shape,
+  Backdrop,
 });
 
 const EMPTY_SIZE = { width: 0, height: 0 };
@@ -65,6 +58,21 @@ const Timeline = () => {
   const onMouseOut = () => {};
 
   const [timeline, setTimeline] = useState<CanvasTimeline | null>(null);
+
+  // Context menu state
+  const { state: contextMenuState, openContextMenu, closeContextMenu } = useTimelineContextMenu();
+
+  // Keyboard shortcuts
+  useEditorHotkeys({
+    timelineCanvas: timeline,
+    setZoomLevel: (zoomLevel) => {
+      if (typeof zoomLevel === "function") {
+        setScale((prev) => ({ ...prev, zoom: zoomLevel(prev.zoom) }));
+      } else {
+        setScale((prev) => ({ ...prev, zoom: zoomLevel }));
+      }
+    },
+  });
   useEffect(() => {
     const position = timeUsToUnits(currentTimeUs, scale.zoom);
     const canvasEl = canvasElRef.current;
@@ -96,11 +104,11 @@ const Timeline = () => {
 
   useEffect(() => {
     const timelineContainerEl = timelineContainerRef.current;
-    if (!timelineContainerEl || !canvasRef.current) return;
+    if (!timelineContainerEl) return;
 
     const resizeObserver = new ResizeObserver((entries) => {
       const entry = entries[0];
-      if (!entry) return;
+      if (!entry || !canvasRef.current) return;
 
       const { height, width } = entry.contentRect;
       // Dynamically calculate available height for the canvas
@@ -109,7 +117,7 @@ const Timeline = () => {
       const containerWidth = width - timelineOffsetX;
       const containerHeight = height - 75;
 
-      canvasRef.current?.resize(
+      canvasRef.current.resize(
         {
           width: containerWidth,
           height: containerHeight,
@@ -149,7 +157,8 @@ const Timeline = () => {
       },
       sizesMap: {
         caption: 32,
-        text: 32,
+        shape: 32,
+        text: 30,
         effect: 32,
         audio: 36,
         video: 48,
@@ -167,6 +176,7 @@ const Timeline = () => {
         "effect",
         "track",
         "transition",
+        "shape",
       ],
       acceptsMap: {
         text: ["text", "caption"],
@@ -176,22 +186,26 @@ const Timeline = () => {
         video: ["video", "image"],
         audio: ["audio"],
         caption: ["caption", "text"],
+        shape: ["shape"],
       },
       guideLineColor: "#ffffff",
       withTransitions: ["image", "video"],
     });
 
-    canvas.initScrollbars({
+    const scrollbars = new TimelineScrollbars({
+      canvas,
       offsetX: 16,
       offsetY: 0,
       extraMarginX: 100,
       extraMarginY: 50,
-      scrollbarWidth: 8,
-      scrollbarColor: "rgba(33, 33, 33, 0.8)",
-    });
-
-    canvas.onViewportChange((left: number) => {
-      setScrollLeft(left + 16);
+      scrollbarWidth: 6,
+      scrollbarColor: "rgba(42, 42, 42, 0.85)",
+      stroke: "rgba(255, 255, 255, 0.013)",
+      lineWidth: 1,
+      cornerRadius: 0,
+      onViewportChange: (left: number) => {
+        setScrollLeft(left + 16);
+      },
     });
 
     canvas.emitter.on(TIMELINE_SCALE_CHANGED, (data) => {
@@ -207,8 +221,18 @@ const Timeline = () => {
 
     setTimeline(canvas);
 
+    const observer = new MutationObserver(() => {
+      canvas.requestRenderAll();
+    });
+    observer.observe(document.documentElement, {
+      attributeFilter: ["class", "style"],
+      attributes: true,
+    });
+
     return () => {
+      observer.disconnect();
       bridge.dispose();
+      scrollbars.dispose();
       canvas.purge();
     };
   }, []);
@@ -223,9 +247,63 @@ const Timeline = () => {
     };
   }, [studio, timeline]);
 
+  // Separate effect for context menu - attach to container to avoid Fabric.js interception
+  useEffect(() => {
+    const container = timelineContainerRef.current;
+    if (!container || !timeline) return;
+
+    const handleContextMenu = (e: MouseEvent) => {
+      // Only handle if clicking on canvas area (not header/ruler)
+      const target = e.target as HTMLElement;
+      if (!target.closest("canvas")) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      console.log("Container context menu triggered at:", e.clientX, e.clientY);
+
+      // Get objects at click position using canvas
+      const pointer = timeline.getScenePoint(e);
+      const trackItems = timeline.itemsManager.getTrackItems();
+
+      // Check if clicking on a track item
+      const clickedItem = trackItems.find((item: any) => {
+        const bounds = item.getBoundingRect();
+        return (
+          pointer.x >= bounds.left &&
+          pointer.x <= bounds.left + bounds.width &&
+          pointer.y >= bounds.top &&
+          pointer.y <= bounds.top + bounds.height
+        );
+      });
+
+      if (clickedItem) {
+        // Select the item if not already selected
+        const itemId = (clickedItem as any).id as string;
+        const selectedIds = projectStore.getState().selectedIds;
+        if (!selectedIds.includes(itemId)) {
+          timeline.setActiveIds([itemId]);
+          projectStore.getState().select([itemId]);
+        }
+
+        openContextMenu({ x: e.clientX, y: e.clientY }, "clip", itemId);
+      } else {
+        // Timeline background context menu
+        openContextMenu({ x: e.clientX, y: e.clientY }, "timeline");
+      }
+    };
+
+    // Attach to container with capture to intercept before anything else
+    container.addEventListener("contextmenu", handleContextMenu, { capture: true });
+
+    return () => {
+      container.removeEventListener("contextmenu", handleContextMenu, { capture: true });
+    };
+  }, [timeline, openContextMenu]);
+
   const onClickRuler = (units: number) => {
     const timeUs = unitsToTimeUs(units, scale.zoom);
-    core.seek(timeUs);
+    projectStore.getState().seek(timeUs);
   };
 
   const onRulerScroll = (newScrollLeft: number) => {
@@ -258,6 +336,13 @@ const Timeline = () => {
     if (!container) return;
 
     const handleWheel = (e: WheelEvent) => {
+      // Skip events from the fabric canvas area — those are handled by the canvas's own wheel handler
+      const canvasEl = canvasElRef.current;
+      const canvasWrapper = canvasEl?.closest(".canvas-container") ?? canvasEl?.parentElement;
+      if (canvasWrapper && canvasWrapper.contains(e.target as Node)) {
+        return;
+      }
+
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
         const isTouchScale = Math.floor(e.deltaY) !== Math.ceil(e.deltaY);
@@ -268,20 +353,21 @@ const Timeline = () => {
         const clampedZoom = Math.max(0.1, Math.min(10, newZoom));
 
         if (oldZoom !== clampedZoom) {
+          // Zoom-to-point: keep the content under the cursor at the same screen position
+          const cursorX =
+            e.clientX -
+            (timelineContainerRef.current?.getBoundingClientRect().left ?? 0) -
+            timelineOffsetX;
+          const newScrollLeft = (scrollLeft + cursorX) * (clampedZoom / oldZoom) - cursorX;
           setScale((prev) => ({ ...prev, zoom: clampedZoom }));
-          const rect = timelineContainerRef.current?.getBoundingClientRect();
-          if (rect) {
-            const cursorX = e.clientX - rect.left - timelineOffsetX;
-            const newScrollLeft =
-              (cursorX + scrollLeft - 16) * (clampedZoom / oldZoom) - (cursorX - 16);
-            onRulerScroll(newScrollLeft);
-          }
+          onRulerScroll(Math.max(0, newScrollLeft));
         }
       } else {
-        const delta = e.shiftKey ? e.deltaY : e.deltaX || e.deltaY;
+        // Horizontal scroll only (timeline doesn't vertically scroll from ruler)
+        const delta = e.shiftKey ? e.deltaY : e.deltaX;
         if (delta !== 0) {
           e.preventDefault();
-          onRulerScroll(scrollLeft + delta);
+          onRulerScroll(Math.max(0, scrollLeft + delta));
         }
       }
     };
@@ -291,32 +377,34 @@ const Timeline = () => {
   }, [scale, timelineContainerRef, scrollLeft, onRulerScroll]);
 
   return (
-    <div
-      ref={timelineContainerRef}
-      id="timeline-container"
-      data-timeline="true"
-      className="flex flex-col relative w-full h-full overflow-hidden bg-card border-t border-transparent"
-      onMouseDown={onMouseDown}
-      onMouseMove={onMouseMove}
-      onMouseOut={onMouseOut}
-    >
-      <Header scale={scale} setScale={setScale} />
-      <Ruler
-        scale={scale}
-        onClick={onClickRuler}
-        scrollLeft={scrollLeft}
-        onScroll={onRulerScroll}
-      />
-      <Playhead scale={scale} scrollLeft={scrollLeft} />
+    <TimelineContextMenuProvider state={contextMenuState} onClose={closeContextMenu}>
+      <div
+        ref={timelineContainerRef}
+        id="timeline-container"
+        data-timeline="true"
+        className="flex border-t flex-col relative w-full h-full overflow-hidden bg-background"
+        onMouseDown={onMouseDown}
+        onMouseMove={onMouseMove}
+        onMouseOut={onMouseOut}
+      >
+        <Header scale={scale} setScale={setScale} />
+        <Ruler
+          scale={scale}
+          onClick={onClickRuler}
+          scrollLeft={scrollLeft}
+          onScroll={onRulerScroll}
+        />
+        <Playhead scale={scale} scrollLeft={scrollLeft} />
 
-      {/* Container for Tracks and Canvas */}
-      <div className="flex flex-1 min-h-0 overflow-hidden">
-        <div style={{ width: timelineOffsetX }} className="relative flex-none" />
-        <div className="relative flex-1 min-h-0 overflow-hidden">
-          <canvas id="designcombo-timeline-canvas" ref={canvasElRef} />
+        {/* Container for Tracks and Canvas */}
+        <div className="flex flex-1 min-h-0 overflow-hidden">
+          <div style={{ width: timelineOffsetX }} className="relative flex-none" />
+          <div className="relative flex-1 min-h-0 overflow-hidden">
+            <canvas id="designcombo-timeline-canvas" ref={canvasElRef} />
+          </div>
         </div>
       </div>
-    </div>
+    </TimelineContextMenuProvider>
   );
 };
 

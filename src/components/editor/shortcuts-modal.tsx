@@ -103,12 +103,12 @@ export function ShortcutsModal({ open, onOpenChange }: ShortcutsModalProps) {
                         item.disabled ? "opacity-40" : "",
                       )}
                     >
-                      <span className="text-zinc-300">{item.label}</span>
+                      <span className="text-muted-foreground">{item.label}</span>
                       <div className="flex gap-5">
                         {item.keys.map((key, i) => (
                           <Kbd
                             key={i}
-                            className="bg-zinc-800 border-zinc-700 text-zinc-300 min-w-6"
+                            className="bg-muted border-border text-muted-foreground min-w-6"
                           >
                             {key}
                           </Kbd>
@@ -120,9 +120,9 @@ export function ShortcutsModal({ open, onOpenChange }: ShortcutsModalProps) {
                 {index < SHORTCUTS.length - 1 && (
                   <>
                     <div className="md:hidden">
-                      <Separator className="my-4 bg-zinc-800" />
+                      <Separator className="my-4 bg-border" />
                     </div>
-                    <div className="hidden md:block absolute -right-4 top-0 bottom-0 w-[1px] bg-zinc-800" />
+                    <div className="hidden md:block absolute -right-4 top-0 bottom-0 w-[1px] bg-border" />
                   </>
                 )}
               </div>

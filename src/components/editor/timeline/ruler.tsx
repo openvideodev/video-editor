@@ -10,12 +10,7 @@ import {
 import { useStore } from "zustand";
 import { projectStore } from "@/lib/project";
 import { useTimelineOffsetX } from "../hooks/use-timeline-offset";
-
-const RULER_COLORS = {
-  bg: "#111010",
-  text: "#9ca3af",
-  border: "#374151",
-};
+import { useResolvedColor } from "@/hooks/use-resolved-color";
 
 interface RulerProps {
   height?: number;
@@ -43,7 +38,13 @@ const Ruler = (props: RulerProps) => {
   const durationUs = useStore(projectStore, (s) => s.settings.duration);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  const colors = RULER_COLORS;
+  const resolvedTextColor = useResolvedColor(canvasRef, "--muted-foreground", "#9ca3af");
+  const resolvedBorderColor = useResolvedColor(canvasRef, "--border", "#374151");
+
+  const colors = {
+    text: resolvedTextColor,
+    border: resolvedBorderColor,
+  };
 
   const [canvasSize, setCanvasSize] = useState({
     width: 0,
@@ -72,10 +73,10 @@ const Ruler = (props: RulerProps) => {
 
       // Drawing settings
       context.fillStyle = colors.text;
-      context.strokeStyle = colors.border;
+      context.strokeStyle = colors.text;
       context.lineWidth = 1;
       context.font = `11px ${SECONDARY_FONT}`;
-      context.textAlign = "left";
+      context.textAlign = "center";
       context.textBaseline = "middle";
 
       // Calculate intervals
@@ -129,30 +130,33 @@ const Ruler = (props: RulerProps) => {
         if (x < -50) continue;
 
         const isBeyondDuration = time > durationUs / MICROSECONDS_PER_SECOND + 0.001;
-        context.globalAlpha = isBeyondDuration ? 0.4 : 1.0;
+        const baseAlpha = isBeyondDuration ? 0.4 : 1.0;
 
         const isMain =
           Math.abs(time % mainInterval) < 0.001 ||
           Math.abs((time % mainInterval) - mainInterval) < 0.001;
 
-        context.beginPath();
         if (isMain) {
+          context.globalAlpha = baseAlpha;
+          context.beginPath();
           context.moveTo(x, 0);
-          context.lineTo(x, height);
+          context.lineTo(x, 6);
           context.stroke();
 
           const text = formatTime(time);
-          context.fillText(text, x + 5, height / 2);
+          context.fillText(text, x, height / 2 + 6);
         } else if (subInterval !== mainInterval) {
+          context.globalAlpha = baseAlpha * 0.5;
+          context.beginPath();
           context.moveTo(x, 0);
-          context.lineTo(x, 4);
+          context.lineTo(x, 6);
           context.stroke();
         }
       }
 
       context.restore();
     },
-    [scale.zoom, pixelsPerSecond, offsetX, durationUs],
+    [scale.zoom, pixelsPerSecond, offsetX, durationUs, colors.text, colors.border],
   );
 
   useEffect(() => {
@@ -321,7 +325,6 @@ const Ruler = (props: RulerProps) => {
 
   return (
     <div
-      className="border-t border-border"
       style={{
         position: "relative",
         width: "100%",

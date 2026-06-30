@@ -7,6 +7,7 @@ import { ITimelineScaleState } from "@openvideo/timeline";
 
 class Timeline extends TimelineBase {
   public isShiftKey: boolean = false;
+
   constructor(
     canvasEl: HTMLCanvasElement,
     options: Partial<TimelineOptions> & {

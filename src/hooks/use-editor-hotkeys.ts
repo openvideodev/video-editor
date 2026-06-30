@@ -2,8 +2,8 @@ import { useEffect } from "react";
 import hotkeys from "hotkeys-js";
 import { useStore } from "zustand";
 import { projectStore, core } from "@/lib/project";
-import { useStudioStore } from "@/stores/studio-store";
 import CanvasTimeline from "@/components/editor/timeline/items/timeline";
+import { nanoid, AnyClip } from "@openvideo/core";
 
 interface UseEditorHotkeysProps {
   timelineCanvas: CanvasTimeline | null;
@@ -15,7 +15,6 @@ export function useEditorHotkeys({ timelineCanvas, setZoomLevel }: UseEditorHotk
   const isPlaying = useStore(projectStore, (s) => s.isPlaying);
   const selectedIds = useStore(projectStore, (s) => s.selectedIds);
   const fps = useStore(projectStore, (s) => s.settings.fps);
-  const { studio } = useStudioStore();
 
   useEffect(() => {
     // Play/Pause
@@ -48,15 +47,80 @@ export function useEditorHotkeys({ timelineCanvas, setZoomLevel }: UseEditorHotk
       projectStore.getState().select(Object.keys(clips));
     });
 
-    // Copy / Paste / Cut
+    // Copy
     hotkeys("command+c, ctrl+c", (event) => {
-      // Future: Implement Core-level clipboard
+      const activeTag = document.activeElement?.tagName.toLowerCase();
+      if (activeTag === "input" || activeTag === "textarea") return;
+
+      event.preventDefault();
+      const { clips, selectedIds } = projectStore.getState();
+      if (selectedIds.length === 0) return;
+
+      // Store copies of selected clips in core store clipboard
+      const items = selectedIds
+        .map((id) => clips[id])
+        .filter(Boolean)
+        .map((clip) => JSON.parse(JSON.stringify(clip)));
+      projectStore.getState().setClipboard(items);
     });
 
+    // Cut
+    hotkeys("command+x, ctrl+x", (event) => {
+      const activeTag = document.activeElement?.tagName.toLowerCase();
+      if (activeTag === "input" || activeTag === "textarea") return;
+
+      event.preventDefault();
+      const { clips, selectedIds } = projectStore.getState();
+      if (selectedIds.length === 0) return;
+
+      // Store copies then delete
+      const items = selectedIds
+        .map((id) => clips[id])
+        .filter(Boolean)
+        .map((clip) => JSON.parse(JSON.stringify(clip)));
+      projectStore.getState().setClipboard(items);
+
+      core.clip.remove(selectedIds);
+    });
+
+    // Paste
     hotkeys("command+v, ctrl+v", (event) => {
-      if (studio) {
-        studio.duplicateSelected();
-      }
+      const activeTag = document.activeElement?.tagName.toLowerCase();
+      if (activeTag === "input" || activeTag === "textarea") return;
+
+      event.preventDefault();
+      const clipboard = projectStore.getState().clipboard;
+      if (clipboard.length === 0) return;
+
+      const currentTime = core.store.getState().currentTime;
+
+      // Calculate the earliest start time among clipboard clips to maintain relative offsets
+      const earliestFrom = Math.min(...clipboard.map((c: AnyClip) => c.timing?.display?.from ?? 0));
+
+      // Create new clips at current time with relative offsets preserved
+      const newClips = clipboard.map((clip: AnyClip) => {
+        const offsetFromStart = (clip.timing?.display?.from ?? 0) - earliestFrom;
+        const newFrom = currentTime + offsetFromStart;
+        const duration = clip.timing?.duration ?? 0;
+
+        return {
+          ...clip,
+          id: nanoid(),
+          timing: {
+            ...clip.timing,
+            display: {
+              ...clip.timing?.display,
+              from: newFrom,
+              to: newFrom + duration,
+            },
+          },
+        };
+      });
+
+      // Add all clips and select the new ones
+      Promise.all(newClips.map((clip: AnyClip) => core.clip.add(clip))).then(() => {
+        projectStore.getState().select(newClips.map((c: AnyClip) => c.id));
+      });
     });
 
     // Zoom In
@@ -88,7 +152,15 @@ export function useEditorHotkeys({ timelineCanvas, setZoomLevel }: UseEditorHotk
       if (activeTag === "input" || activeTag === "textarea") return;
       event.preventDefault();
       const step = event.shiftKey ? 5 : 1;
-      studio?.selection.move(0, -step);
+      const { clips, selectedIds } = projectStore.getState();
+      selectedIds.forEach((id) => {
+        const clip = clips[id];
+        if (clip) {
+          core.clip.update(id, {
+            transform: { ...clip.transform, y: clip.transform.y - step },
+          });
+        }
+      });
     });
 
     // Move Down
@@ -97,7 +169,15 @@ export function useEditorHotkeys({ timelineCanvas, setZoomLevel }: UseEditorHotk
       if (activeTag === "input" || activeTag === "textarea") return;
       event.preventDefault();
       const step = event.shiftKey ? 5 : 1;
-      studio?.selection.move(0, step);
+      const { clips, selectedIds } = projectStore.getState();
+      selectedIds.forEach((id) => {
+        const clip = clips[id];
+        if (clip) {
+          core.clip.update(id, {
+            transform: { ...clip.transform, y: clip.transform.y + step },
+          });
+        }
+      });
     });
 
     // Move Left
@@ -106,7 +186,15 @@ export function useEditorHotkeys({ timelineCanvas, setZoomLevel }: UseEditorHotk
       if (activeTag === "input" || activeTag === "textarea") return;
       event.preventDefault();
       const step = event.shiftKey ? 5 : 1;
-      studio?.selection.move(-step, 0);
+      const { clips, selectedIds } = projectStore.getState();
+      selectedIds.forEach((id) => {
+        const clip = clips[id];
+        if (clip) {
+          core.clip.update(id, {
+            transform: { ...clip.transform, x: clip.transform.x - step },
+          });
+        }
+      });
     });
 
     // Move Right
@@ -115,7 +203,15 @@ export function useEditorHotkeys({ timelineCanvas, setZoomLevel }: UseEditorHotk
       if (activeTag === "input" || activeTag === "textarea") return;
       event.preventDefault();
       const step = event.shiftKey ? 5 : 1;
-      studio?.selection.move(step, 0);
+      const { clips, selectedIds } = projectStore.getState();
+      selectedIds.forEach((id) => {
+        const clip = clips[id];
+        if (clip) {
+          core.clip.update(id, {
+            transform: { ...clip.transform, x: clip.transform.x + step },
+          });
+        }
+      });
     });
 
     // Last Frame
@@ -138,6 +234,7 @@ export function useEditorHotkeys({ timelineCanvas, setZoomLevel }: UseEditorHotk
       hotkeys.unbind("backspace, delete");
       hotkeys.unbind("command+a, ctrl+a");
       hotkeys.unbind("command+c, ctrl+c");
+      hotkeys.unbind("command+x, ctrl+x");
       hotkeys.unbind("command+v, ctrl+v");
       hotkeys.unbind("command+=, ctrl+=");
       hotkeys.unbind("command+-, ctrl+-");
@@ -150,5 +247,5 @@ export function useEditorHotkeys({ timelineCanvas, setZoomLevel }: UseEditorHotk
       hotkeys.unbind("command+left, ctrl+left");
       hotkeys.unbind("command+right, ctrl+right");
     };
-  }, [isPlaying, timelineCanvas, currentTimeUs, selectedIds, fps, setZoomLevel, studio]);
+  }, [isPlaying, timelineCanvas, currentTimeUs, selectedIds, fps, setZoomLevel]);
 }

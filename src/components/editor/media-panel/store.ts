@@ -1,79 +1,57 @@
-import { Icons } from "@/components/shared/icons";
 import {
-  IconFolder,
-  IconLetterT,
-  IconCircleSquare,
-  IconSubtitles,
-  IconMusic,
-  IconMicrophone,
-  IconWaveSine,
-  IconArrowsLeftRight,
-  IconSparkles,
-  type IconProps,
-  IconPhoto,
-  IconVideo,
-} from "@tabler/icons-react";
+  RiClosedCaptioningLine,
+  RiClosedCaptioningFill,
+  RiGitMergeLine,
+  RiGitMergeFill,
+  RiShapesLine,
+  RiShapesFill,
+  RiFolderOpenLine,
+  RiFolderOpenFill,
+  RiTBoxLine,
+  RiTBoxFill,
+  RiColorFilterLine,
+  RiColorFilterFill,
+} from "@remixicon/react";
 import { create } from "zustand";
 
-export type Tab =
-  | "uploads"
-  | "images"
-  | "videos"
-  | "music"
-  | "text"
-  | "captions"
-  | "effects"
-  | "elements"
-  | "voiceovers"
-  | "sfx"
-  | "transitions";
+export type Tab = "assets" | "text" | "captions" | "effects" | "transitions" | "elements";
 
 export const tabs: {
-  [key in Tab]: { icon: React.FC<IconProps> | React.FC<any>; label: string };
+  [key in Tab]: {
+    icon: React.ComponentType<any> | React.FC<any>;
+    activeIcon: React.ComponentType<any> | React.FC<any>;
+    label: string;
+  };
 } = {
-  uploads: {
-    icon: IconFolder,
-    label: "Uploads",
-  },
-  images: {
-    icon: IconPhoto,
-    label: "Images",
-  },
-  videos: {
-    icon: IconVideo,
-    label: "Videos",
+  assets: {
+    icon: RiFolderOpenLine,
+    activeIcon: RiFolderOpenFill,
+    label: "Assets",
   },
   text: {
-    icon: IconLetterT,
+    icon: RiTBoxLine,
+    activeIcon: RiTBoxFill,
     label: "Text",
   },
-  elements: {
-    icon: IconCircleSquare,
-    label: "Elements",
-  },
   captions: {
-    icon: IconSubtitles,
+    icon: RiClosedCaptioningLine,
+    activeIcon: RiClosedCaptioningFill,
     label: "Captions",
   },
-  music: {
-    icon: IconMusic,
-    label: "Music",
-  },
-  voiceovers: {
-    icon: IconMicrophone,
-    label: "Voiceovers",
-  },
-  sfx: {
-    icon: IconWaveSine,
-    label: "SFX",
-  },
   transitions: {
-    icon: Icons.transition,
+    icon: RiGitMergeLine,
+    activeIcon: RiGitMergeFill,
     label: "Transitions",
   },
   effects: {
-    icon: IconSparkles,
+    icon: RiColorFilterLine,
+    activeIcon: RiColorFilterFill,
     label: "Effects",
+  },
+  elements: {
+    icon: RiShapesLine,
+    activeIcon: RiShapesFill,
+    label: "Elements",
   },
 };
 
@@ -85,19 +63,28 @@ interface MediaPanelStore {
   clearHighlight: () => void;
   showProperties: boolean;
   setShowProperties: (show: boolean) => void;
+  isOpen: boolean;
+  setIsOpen: (open: boolean) => void;
+  showLabels: boolean;
+  setShowLabels: (show: boolean) => void;
 }
 
 export const useMediaPanelStore = create<MediaPanelStore>((set) => ({
-  activeTab: "uploads",
-  setActiveTab: (tab) => set({ activeTab: tab, showProperties: false }),
+  activeTab: "assets",
+  setActiveTab: (tab) => set({ activeTab: tab, showProperties: false, isOpen: true }),
   highlightMediaId: null,
   requestRevealMedia: (mediaId) =>
     set({
-      activeTab: "uploads",
+      activeTab: "assets",
       highlightMediaId: mediaId,
       showProperties: false,
+      isOpen: true,
     }),
   clearHighlight: () => set({ highlightMediaId: null }),
   showProperties: false,
   setShowProperties: (show) => set({ showProperties: show }),
+  isOpen: true,
+  setIsOpen: (open) => set({ isOpen: open }),
+  showLabels: false,
+  setShowLabels: (show) => set({ showLabels: show }),
 }));

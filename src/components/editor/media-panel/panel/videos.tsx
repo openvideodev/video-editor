@@ -4,11 +4,10 @@ import { useState, useEffect, useCallback } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { core } from "@/lib/project";
 import { Log } from "@openvideo/engine-pixi";
-import { Search, Film, Loader2 } from "lucide-react";
+import { RiLoader5Line, RiFilmLine, RiSearchLine } from "@remixicon/react";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { debounce } from "lodash";
 import Draggable from "@/components/shared/draggable";
-import { useIsDraggingOverTimeline } from "@/hooks/use-is-dragging-over-timeline";
 
 interface PexelsVideo {
   id: number;
@@ -36,7 +35,6 @@ export default function PanelVideos() {
   const [searchQuery, setSearchQuery] = useState("");
   const [videos, setVideos] = useState<PexelsVideo[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const isDraggingOverTimeline = useIsDraggingOverTimeline();
 
   const fetchVideos = async (query: string) => {
     setIsLoading(true);
@@ -85,8 +83,10 @@ export default function PanelVideos() {
           name: `Video by ${asset.user.name}`,
           width: asset.width,
           height: asset.height,
-          display: { from: 0, to: asset.duration * 1e6 },
-          trim: { from: 0, to: asset.duration * 1e6 },
+          timing: {
+            display: { from: 0, to: asset.duration * 1e6 },
+            trim: { from: 0, to: asset.duration * 1e6 },
+          },
           metadata: {
             previewUrl: asset.image,
           },
@@ -104,7 +104,7 @@ export default function PanelVideos() {
         <div className="p-4">
           <InputGroup>
             <InputGroupAddon className="bg-secondary/30 pointer-events-none text-muted-foreground w-8 justify-center">
-              <Search size={14} />
+              <RiSearchLine size={14} />
             </InputGroupAddon>
 
             <InputGroupInput
@@ -120,11 +120,11 @@ export default function PanelVideos() {
       <ScrollArea className="flex-1 px-4">
         {isLoading && videos.length === 0 ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="animate-spin text-muted-foreground" size={32} />
+            <RiLoader5Line className="animate-spin text-muted-foreground" size={32} />
           </div>
         ) : videos.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 text-muted-foreground gap-2">
-            <Film size={32} className="opacity-50" />
+            <RiFilmLine size={32} className="opacity-50" />
             <span className="text-sm">No videos found</span>
           </div>
         ) : (
@@ -141,20 +141,19 @@ export default function PanelVideos() {
                     name: `Video by ${video.user.name}`,
                     width: video.width,
                     height: video.height,
-                    duration: video.duration * 1e6,
+                    timing: { duration: video.duration * 1e6 },
                     metadata: {
                       previewUrl: video.image,
                     },
                   }}
-                  shouldDisplayPreview={!isDraggingOverTimeline}
                   renderCustomPreview={
-                    <div className="w-20 aspect-video rounded-md overflow-hidden shadow-xl border-2 border-primary">
+                    <div className="w-20 aspect-video overflow-hidden shadow-xl border-2 border-primary">
                       <img src={video.image} className="w-full h-full object-cover" />
                     </div>
                   }
                 >
                   <div
-                    className="group relative aspect-square rounded-md overflow-hidden bg-secondary/50 cursor-pointer border border-transparent hover:border-primary/50 transition-all"
+                    className="group relative aspect-square overflow-hidden bg-secondary/50 cursor-pointer border border-transparent hover:border-primary/50 transition-all"
                     onClick={() => addItemToCanvas(video)}
                   >
                     <div
@@ -183,7 +182,7 @@ export default function PanelVideos() {
         )}
         {isLoading && videos.length > 0 && (
           <div className="flex items-center justify-center py-4">
-            <Loader2 className="animate-spin text-muted-foreground" size={20} />
+            <RiLoader5Line className="animate-spin text-muted-foreground" size={20} />
           </div>
         )}
       </ScrollArea>

@@ -3,6 +3,7 @@ import { projectStore } from "@/lib/project";
 import { MouseEvent, TouchEvent, useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { timeUsToUnits, unitsToTimeUs, ITimelineScaleState } from "@openvideo/timeline";
 import { useTimelineOffsetX } from "../hooks/use-timeline-offset";
+import { cn } from "@/lib/utils";
 
 const Playhead = ({ scrollLeft, scale }: { scrollLeft: number; scale: ITimelineScaleState }) => {
   const currentTimeUs = useStore(projectStore, (s) => s.currentTime);
@@ -17,6 +18,7 @@ const Playhead = ({ scrollLeft, scale }: { scrollLeft: number; scale: ITimelineS
 
   // Local state for optimistic UI updates (smooth dragging)
   const [localTimeUs, setLocalTimeUs] = useState<number | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   // Determine which time to use for visual positioning
   const displayTimeUs = localTimeUs !== null ? localTimeUs : currentTimeUs;
@@ -29,8 +31,6 @@ const Playhead = ({ scrollLeft, scale }: { scrollLeft: number; scale: ITimelineS
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  const color = "#ffffff";
 
   const handleMouseMove = useCallback(
     (e: MouseEvent | TouchEvent | any) => {
@@ -55,6 +55,7 @@ const Playhead = ({ scrollLeft, scale }: { scrollLeft: number; scale: ITimelineS
   const handleMouseUp = useCallback(() => {
     if (dragRef.current.isDragging) {
       dragRef.current.isDragging = false;
+      setIsDragging(false);
       setLocalTimeUs(null);
 
       document.removeEventListener("mousemove", handleMouseMove);
@@ -77,6 +78,7 @@ const Playhead = ({ scrollLeft, scale }: { scrollLeft: number; scale: ITimelineS
       startTimeUs: startTimeUs,
     };
 
+    setIsDragging(true);
     setLocalTimeUs(startTimeUs);
 
     document.addEventListener("mousemove", handleMouseMove);
@@ -113,32 +115,18 @@ const Playhead = ({ scrollLeft, scale }: { scrollLeft: number; scale: ITimelineS
     >
       {/* Handle */}
       <div
+        className={cn(
+          "absolute top-0 -translate-x-1/2 w-2.5 h-4 rounded-b border shadow-md flex items-center justify-center z-20",
+          isDragging ? "bg-primary-foreground border-primary" : "bg-primary border-primary",
+        )}
         style={{
-          borderRadius: "0 0 4px 4px",
-          backgroundColor: color,
-          height: "16px",
-          width: "12px",
-          transform: "translateX(-50%)",
-          cursor: "grab",
+          cursor: isDragging ? "grabbing" : "grab",
         }}
-        className="absolute top-0 flex items-center justify-center shadow-lg border border-black/10"
-      >
-        <div
-          style={{
-            width: 1,
-            height: 8,
-            backgroundColor: "#000",
-            opacity: 0.5,
-          }}
-        />
-      </div>
+      />
 
       {/* Line */}
       <div className="relative h-full pointer-events-none">
-        <div
-          className="absolute top-0 h-full w-[1px] -translate-x-1/2 transform shadow-sm"
-          style={{ backgroundColor: color }}
-        />
+        <div className="absolute top-0 h-full w-[1px] -translate-x-1/2 transform bg-primary shadow-sm" />
       </div>
     </div>
   );

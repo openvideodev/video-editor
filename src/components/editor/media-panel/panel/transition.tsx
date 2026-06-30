@@ -73,7 +73,7 @@ const TransitionCard = ({
         onMouseLeave={() => setIsHovered(false)}
         onClick={onClick}
       >
-        <div className="relative w-full aspect-video rounded-md bg-input/30 border overflow-hidden">
+        <div className="relative w-full aspect-video bg-input/30 border overflow-hidden">
           {previewStatic || previewDynamic ? (
             <div
               className="absolute inset-0 w-full h-full bg-cover bg-center transition-opacity duration-150"
@@ -86,7 +86,7 @@ const TransitionCard = ({
           )}
 
           {badge && (
-            <div className="absolute top-1 right-1 bg-primary/80 text-primary-foreground text-[9px] font-semibold px-1.5 py-0.5 rounded-full leading-none">
+            <div className="absolute top-1 right-1 bg-primary/80 text-primary-foreground text-[9px] font-semibold px-1.5 py-0.5 leading-none">
               {badge}
             </div>
           )}
@@ -105,7 +105,6 @@ const TransitionCard = ({
 const CombinedTransitions = () => {
   const [ownPresets, setOwnPresets] = useState<CustomPreset[]>([]);
   const allDefaults = getTransitionOptions();
-
 
   const handleCustomClick = async (preset: CustomPreset) => {
     const key = `custom_${preset.id}`;
@@ -144,19 +143,19 @@ const CombinedTransitions = () => {
           }}
         />
       ))}
- 
+
       {/* Custom transitions */}
       {customPresets.map((preset) => (
-          <TransitionCard
-            key={preset.id}
-            effectKey={preset.data.fragment}
-            label={preset.data.label || preset.name}
-            previewStatic=""
-            previewDynamic=""
-            onClick={() => handleCustomClick(preset)}
-            badge="Custom"
-          />
-        ))}
+        <TransitionCard
+          key={preset.id}
+          effectKey={preset.data.fragment}
+          label={preset.data.label || preset.name}
+          previewStatic=""
+          previewDynamic=""
+          onClick={() => handleCustomClick(preset)}
+          badge="Custom"
+        />
+      ))}
     </>
   );
 };

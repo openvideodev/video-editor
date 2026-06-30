@@ -3,28 +3,34 @@
 import { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Play, Trash2 } from "lucide-react";
-import { fontManager, jsonToClip, Log, type IClip } from "@openvideo/engine-pixi";
+import {
+  RiLoader5Line,
+  RiKeyboardLine,
+  RiPaletteLine,
+  RiPlayLine,
+  RiSparkling2Line,
+  RiDeleteBinLine,
+  RiUploadLine,
+  RiClosedCaptioningAiLine,
+} from "@remixicon/react";
+import { fontManager, Log } from "@openvideo/engine-pixi";
+import type { AnyClip } from "@openvideo/core";
 import { generateCaptionClips } from "@/lib/caption-generator";
 import { useStore } from "zustand";
 import { projectStore, core } from "@/lib/project";
-import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { nanoid } from "nanoid";
 
 export default function PanelCaptions() {
   const clips = useStore(projectStore, (s) => s.clips);
-  const currentTime = useStore(projectStore, (s) => s.currentTime);
 
-  const mediaItems = (Object.values(clips) as unknown as IClip[]).filter(
-    (clip: any) => clip.type === "Video" || clip.type === "Audio",
+  const mediaItems = (Object.values(clips) as AnyClip[]).filter(
+    (clip) => clip.type === "Video" || clip.type === "Audio",
   );
 
-  const captionItems = (Object.values(clips) as unknown as IClip[])
-    .filter((clip: any) => clip.type === "Caption")
-    .sort(
-      (a, b) => ((a as any).timing?.display?.from ?? 0) - ((b as any).timing?.display?.from ?? 0),
-    );
+  const captionItems = (Object.values(clips) as AnyClip[])
+    .filter((clip) => clip.type === "Caption")
+    .sort((a, b) => a.timing.display.from - b.timing.display.from);
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeCaptionId, setActiveCaptionId] = useState<string | null>(null);
@@ -40,20 +46,6 @@ export default function PanelCaptions() {
     activeCaptionIdRef.current = activeCaptionId;
   }, [activeCaptionId]);
 
-  useEffect(() => {
-    // Find the currently active caption
-    const activeItem = captionItems.find(
-      (item) =>
-        currentTime >= (item as any).timing?.display?.from &&
-        currentTime < (item as any).timing?.display?.to,
-    );
-    if (activeItem) {
-      setActiveCaptionId(activeItem.id);
-    } else {
-      setActiveCaptionId(null);
-    }
-  }, [currentTime, captionItems]);
-
   const updateClips = () => {}; // No longer needed but kept empty to avoid breaking other calls if any
 
   useEffect(() => {
@@ -63,9 +55,7 @@ export default function PanelCaptions() {
       // Find the currently active caption
       // We use the Ref because this closure is created once and we don't want to re-bind listener
       const activeItem = captionItemsRef.current.find(
-        (item) =>
-          currentTime >= (item as any).timing?.display?.from &&
-          currentTime < (item as any).timing?.display?.to,
+        (item) => currentTime >= item.timing.display.from && currentTime < item.timing.display.to,
       );
 
       const newActiveId = activeItem ? activeItem.id : null;
@@ -137,9 +127,11 @@ export default function PanelCaptions() {
                 ...json.metadata,
                 sourceClipId: mediaClip.id,
               },
-              display: {
-                from: json.display.from + (mediaClip.timing?.display?.from ?? 0),
-                to: json.display.to + (mediaClip.timing?.display?.from ?? 0),
+              timing: {
+                display: {
+                  from: json.timing.display.from + mediaClip.timing.display.from,
+                  to: json.timing.display.to + mediaClip.timing.display.from,
+                },
               },
             };
             clipsToAdd.push(enrichedJson);
@@ -150,15 +142,41 @@ export default function PanelCaptions() {
       }
 
       const trackId = "track_" + nanoid(10);
+      const settings = core.store.getState().settings;
+      const captionTrackConfig = {
+        captions: {
+          style: {
+            fontSize: 80,
+            fontFamily: fontName,
+            fontWeight: "700",
+            fontStyle: "normal",
+            color: "#ffffff",
+            align: "center",
+            fontUrl: fontUrl,
+            stroke: { color: "#000000", width: 4 },
+            shadow: { color: "#000000", alpha: 0.5, blur: 4, offsetX: 2, offsetY: 2 },
+          },
+          colors: {
+            active: { color: "#ffffff", background: "#FF5700" },
+            future: { color: "#ffffff" },
+            keyword: { color: "#ffffff", preserveAfterSpoken: true },
+          },
+          positioning: {
+            videoWidth: settings.width,
+            videoHeight: settings.height,
+          },
+          wordsPerLine: "multiple" as const,
+        },
+      };
       const trackCommand = {
         id: nanoid(),
         type: "track.add",
-        payload: { id: trackId, name: "Captions", type: "caption" },
+        payload: { id: trackId, name: "Captions", type: "caption", config: captionTrackConfig },
       };
 
       if (clipsToAdd.length > 0) {
         const fullClips = await Promise.all(clipsToAdd.map((c) => core.clip.prepare(c as any)));
-
+        console.log({ fullClips });
         const addCommands = fullClips.map((clip) => ({
           id: nanoid(),
           type: "clip.add",
@@ -254,11 +272,13 @@ export default function PanelCaptions() {
         ...caption,
         words: part1Words,
       },
-      display: {
-        from: clipJson.display.from,
-        to: lastWordPart1.to * 1000 + clipJson.display.from,
+      timing: {
+        display: {
+          from: clipJson.timing.display.from,
+          to: lastWordPart1.to * 1000 + clipJson.timing.display.from,
+        },
+        duration: lastWordPart1.to * 1000,
       },
-      duration: lastWordPart1.to * 1000,
     };
 
     const clip2Json = {
@@ -272,11 +292,14 @@ export default function PanelCaptions() {
         ...caption,
         words: normalizeWordTimings(part2Words),
       },
-      display: {
-        from: lastWordPart1.to * 1000 + clipJson.display.from,
-        to: clipJson.display.to,
+      timing: {
+        display: {
+          from: lastWordPart1.to * 1000 + clipJson.timing.display.from,
+          to: clipJson.timing.display.to,
+        },
+        duration:
+          clipJson.timing.display.to - lastWordPart1.to * 1000 - clipJson.timing.display.from,
       },
-      duration: clipJson.display.to - lastWordPart1.to * 1000 - clipJson.display.from,
     };
 
     try {
@@ -317,7 +340,7 @@ export default function PanelCaptions() {
     let updatedWords;
 
     if (isNewWordAdded) {
-      const totalDurationMs = (clipJson.display.to - clipJson.display.from) / 1000;
+      const totalDurationMs = (clipJson.timing.display.to - clipJson.timing.display.from) / 1000;
       const totalChars = newWordsText.reduce((acc, w) => acc + w.length, 0);
       const durationPerChar = totalChars > 0 ? totalDurationMs / totalChars : 0;
 
@@ -380,13 +403,22 @@ export default function PanelCaptions() {
     <div className="h-full flex flex-col">
       <div className="flex flex-1 flex-col gap-4 overflow-hidden min-w-0">
         {mediaItems.length === 0 ? (
-          <div className="flex flex-1 items-center justify-center text-center text-sm text-muted-foreground p-8">
-            Add video or audio to the timeline to generate captions.
+          <div className="flex flex-1 items-center justify-center gap-4 select-none">
+            <div className="flex flex-col items-center justify-center pb-12">
+              <div className="size-16 bg-secondary/30 flex items-center justify-center">
+                <RiSparkling2Line size={24} strokeWidth={1.5} className="text-muted-foreground" />
+              </div>
+              <h3 className="text-sm font-bold text-foreground mb-1.5">No Media Detected</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed max-w-[210px] mb-5 text-center">
+                Add video or audio clips to your timeline first, then auto-generate or write
+                captions.
+              </p>
+            </div>
           </div>
         ) : captionItems.length > 0 ? (
           <div className="flex-1 overflow-hidden">
-            <ScrollArea className="h-full px-4">
-              <div className="flex flex-col gap-2 pb-4">
+            <ScrollArea className="h-full p-3">
+              <div className="flex flex-col">
                 {captionItems.map((item) => (
                   <CaptionItem
                     key={item.id}
@@ -395,31 +427,43 @@ export default function PanelCaptions() {
                     onUpdate={(text, fullUpdate) => handleUpdateCaption(item.id, text, fullUpdate)}
                     onSplit={(pos, text) => handleSplitCaption(item.id, pos, text)}
                     onDelete={() => handleDeleteCaption(item.id)}
-                    onSeek={() => handleSeek((item as any).timing?.display?.from ?? 0)}
+                    onSeek={() => handleSeek(item.timing.display.from)}
                   />
                 ))}
               </div>
             </ScrollArea>
           </div>
         ) : (
-          <div className="flex flex-col gap-6 p-4 py-6 items-center text-center">
-            <div className="text-sm text-muted-foreground">
-              Recognize speech in the selected media and generate captions automatically.
-            </div>
+          <div className="flex flex-1 flex-col gap-2 p-4">
             <Button
               onClick={handleGenerateCaptions}
-              variant="default"
-              className="w-full"
               disabled={isGenerating}
+              variant="outline"
+              className="justify-start"
             >
               {isGenerating ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Generating...
-                </>
+                <RiLoader5Line className="size-4 shrink-0 animate-spin" />
               ) : (
-                "Generate Captions"
+                <RiClosedCaptioningAiLine className="size-4 shrink-0" />
               )}
+              <span className="text-xs font-medium">
+                {isGenerating ? "Generating..." : "Auto Captions"}
+              </span>
+            </Button>
+
+            <Button variant="outline" disabled className="justify-start">
+              <RiKeyboardLine className="size-4 shrink-0" />
+              <span className="text-xs font-medium">Manual Captions</span>
+            </Button>
+
+            <Button variant="outline" disabled className="justify-start">
+              <RiUploadLine className="size-4 shrink-0" />
+              <span className="text-xs font-medium">Upload Caption File</span>
+            </Button>
+
+            <Button variant="outline" disabled className="justify-start">
+              <RiPaletteLine className="size-4 shrink-0" />
+              <span className="text-xs font-medium">Auto Lyrics</span>
             </Button>
           </div>
         )}
@@ -436,7 +480,7 @@ function CaptionItem({
   onDelete,
   onSeek,
 }: {
-  item: IClip;
+  item: AnyClip;
   isActive: boolean;
   onUpdate: (text: string, fullUpdate?: boolean) => void;
   onSplit: (cursorPosition: number, text: string) => void;
@@ -472,59 +516,65 @@ function CaptionItem({
   return (
     <div
       className={cn(
-        "group relative flex flex-col gap-2 rounded-md p-3 transition-colors border-l-2",
-        isActive ? "bg-zinc-700/10 border-zinc-300 border" : "hover:bg-zinc-700/10  border",
+        "group relative flex items-center gap-3 px-2 py-1.5 transition-all duration-100",
+        isActive ? "bg-white/[0.06]" : "hover:bg-white/[0.03]",
       )}
     >
-      <div className="flex items-center justify-between">
-        <div
-          className="text-[10px] font-mono text-muted-foreground cursor-pointer hover:text-white transition-colors"
-          onClick={onSeek}
-        >
-          {formatTime(((item as any).timing?.display?.from ?? 0) / 1_000_000)} -{" "}
-          {formatTime(((item as any).timing?.display?.to ?? 0) / 1_000_000)}
-        </div>
+      {/* Timecode */}
+      <span
+        className={cn(
+          "text-xs font-mono select-none cursor-pointer shrink-0 w-9 tabular-nums transition-colors",
+          isActive ? "text-white/80" : "text-muted-foreground/50 hover:text-muted-foreground",
+        )}
+        onClick={onSeek}
+      >
+        {formatTime(item.timing.display.from / 1_000_000)}
+      </span>
 
-        <div
-          className={cn(
-            "flex items-center gap-1 opacity-0 transition-opacity",
-            isActive || "group-hover:opacity-100",
-          )}
-        >
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-5 w-5 text-muted-foreground hover:text-white"
-            onClick={(e) => {
-              e.stopPropagation();
-              onSeek();
-            }}
-          >
-            <Play className="h-3 w-3" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-5 w-5 text-muted-foreground hover:text-red-400"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete();
-            }}
-          >
-            <Trash2 className="h-3 w-3" />
-          </Button>
-        </div>
-      </div>
-
-      <Textarea
+      {/* Inline textarea */}
+      <textarea
         ref={textareaRef}
         value={text}
         onChange={handleChange}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
-        className="min-h-[20px] p-0 resize-none border-none focus-visible:ring-0 bg-transparent text-sm leading-relaxed text-zinc-300 focus:text-white placeholder:text-zinc-600"
-        rows={Math.max(1, Math.ceil(text.length / 40))}
+        rows={1}
+        className={cn(
+          "flex-1 min-w-0 resize-none bg-transparent border-0 p-0 text-xs leading-5 outline-none focus:ring-0 focus-visible:ring-0 select-text transition-colors shadow-none overflow-hidden",
+          isActive ? "text-white font-medium" : "text-foreground/70 focus:text-foreground",
+        )}
       />
+
+      {/* Actions — only visible on hover/active */}
+      <div
+        className={cn(
+          "flex items-center gap-0.5 shrink-0 transition-all duration-100",
+          isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+        )}
+      >
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-5 w-5 rounded text-muted-foreground hover:text-white hover:bg-white/10"
+          onClick={(e) => {
+            e.stopPropagation();
+            onSeek();
+          }}
+        >
+          <RiPlayLine className="h-2.5 w-2.5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-5 w-5 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+        >
+          <RiDeleteBinLine className="h-2.5 w-2.5" />
+        </Button>
+      </div>
     </div>
   );
 }

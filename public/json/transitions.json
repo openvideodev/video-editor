@@ -106,11 +106,7 @@
         "similarity": 0.1,
         "smoothness": 0.05
       },
-      "transitionEffect": {
-        "id": "trans_1772252617678",
-        "key": "GridFlip",
-        "name": "GridFlip"
-      },
+      "transitionKey": "GridFlip",
       "fromClipId": "clip_1772252592307_o0gpzccct",
       "toClipId": "clip_1772252601445_pqnurox3c",
       "effects": []

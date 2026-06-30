@@ -5,95 +5,97 @@
 </p>
 <h1 align="center">OpenVideo Editor</h1>
 
-<div align="center">
-  
-  
-An advanced, AI-powered video editor that leverages **WebCodecs API** for high-performance client-side video rendering. This project allows users to create, edit, and export videos directly in the browser with the power of AI.
+<p align="center">A lightweight, high-performance, client-side web video editor. It serves as a showcase for the OpenVideo engine and a starter kit for building video-editing SaaS applications.</p>
 
 <p align="center">
-    <a href="https://openvideo.dev/">OpenVideo</a>
-    ·  
+    <a href="https://openvideo.dev/">Website</a>
+    ·
     <a href="https://discord.gg/SCfMrQx8kr">Discord</a>
-    ·  
+    ·
     <a href="https://docs.openvideo.dev">Docs</a>
 </p>
-</div>
 
-[![](https://cdn.scenify.io/openvideo-editor.png)](https://github.com/openvideodev/openvideo)
+<p align="center">
+    <a href="https://github.com/openvideodev/openvideo">
+        <img src="https://cdn.scenify.io/openpreview1.png" alt="OpenVideo Preview" />
+    </a>
+</p>
 
-### 🤖 AI-Powered Capabilities
+---
 
-- **AI Copilot**: Chat-based editing assistant to generate scripts, change visuals, and control the timeline.
-- **Script Generation**: Integrated with **OpenAI** and **Gemini** to create engaging video scripts from simple prompts.
-- **Text-to-Speech**: High-quality voice synthesization using **ElevenLabs** for professional voiceovers.
-- **Auto-Captions**: Automatic transcription and caption generation using **Deepgram**.
+## Key Features
 
-### 🎬 Professional Video Editing
+- **Client-Side Rendering**: Hardware-accelerated rendering and exporting using WebCodecs and PixiJS v8 via `@openvideo/engine-pixi`.
+- **Multi-Track Timeline**: Layered editing for video, audio, and images with drag-and-drop, splitting, trimming, and snapping.
+- **Interactive Canvas**: Real-time viewport preview supporting drag, resize, rotate, and layer re-ordering.
+- **Asset Management**: Local and cloud storage (e.g., Cloudflare R2, AWS S3) for media uploads.
+- **Effects & Transitions**: Custom shader-based transitions and effects applied between clips.
+- **Local Exporting**: Direct timeline rendering into MP4 files using browser APIs with zero server rendering costs.
+- **Modern UI/UX**: Dark-mode interface built with Tailwind CSS v4, Radix UI, and Framer Motion.
 
-- **Multi-Track Timeline**: Advanced timeline for managing video, audio, image, and text tracks.
-- **Client-Side Rendering**: Fast, private, and server-free rendering using the **WebCodecs API**.
-- **Rich Media Editing**: Trim, split, resize, rotate, and position elements with precision.
-- **Transitions & Effects**: Built-in library of transitions and visual effects to enhance your videos.
 
-### 🎨 Assets & Media
+---
 
-- **Stock Library Integration**: Direct access to royalty-free images and videos from **Pexels** and **Freepik**.
-- **Media Uploads**: Easy drag-and-drop upload for your own videos, images, and audio files.
-- **Cloud Storage**: Secure asset management compatible with S3/R2.
+## Tech Stack
 
-### 🚀 Export & Integration
+| Component | Technology |
+| :--- | :--- |
+| **Framework** | Next.js 15 (App Router) |
+| **Rendering** | PixiJS v8 via `@openvideo/engine-pixi` |
+| **Timeline & Core** | `@openvideo/core`, `@openvideo/timeline` |
+| **State** | Zustand |
+| **Styling** | Tailwind CSS v4 |
+| **UI & Animation** | Radix UI, shadcn/ui, Framer Motion |
 
-- **Social Media Ready**: Optimized export presets for TikTok, Instagram Reels, and YouTube Shorts.
-- **High-Quality Export**: Export videos in MP4 format up to 4K resolution.
+---
 
 ## Getting Started
 
-### Prerequisites
+### 1. Installation
 
-- **Node.js** (v18 or higher recommended)
-- **pnpm** (Package Manager)
+Install dependencies from the monorepo root or directly in this directory:
 
-### Installation
+```bash
+# From the monorepo root
+pnpm install
 
-1.  Clone the repository:
+# Or within this directory (standalone)
+npm install
+```
 
-    ```bash
-    git clone https://github.com/openvideodev/react-video-editor.git
-    cd react-video-editor
-    ```
+### 2. Environment Setup
 
-2.  Install dependencies:
+Copy `.env.sample` to `.env` and configure the required keys:
 
-    ```bash
-    pnpm install
-    ```
+```bash
+cp .env.sample .env
+```
 
-3.  Configure environment variables:
-    Copy the sample environment file to `.env`:
+| Variable | Description |
+| :--- | :--- |
+| `R2_*` | Cloudflare R2 / S3 credentials and public CDN domain for asset uploads. |
+| `DEEPGRAM_API_KEY` | API key for audio and video transcription. |
+| `PEXELS_API_KEY` | API key for the stock media library. |
 
-    ```bash
-    cp .env.sample .env
-    ```
 
-    > **Note**: You will need to obtain API keys for services like OpenAI, ElevenLabs, and others to fully utilize the AI features.
+### 3. Run the Development Server
 
-4.  Run the development server:
+```bash
+pnpm dev
+# or
+npm run dev
+```
 
-    ```bash
-    pnpm dev
-    ```
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-5.  Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-## License
+## License & Commercial Usage
 
-**OpenVideo** is dual-licensed:
+OpenVideo is available under a dual-license model:
 
-1.  **Personal Use**: Free for personal, non-commercial use. You are welcome to explore the code, modify it, and use it for your own personal projects.
-2.  **Commercial Use**: Any commercial usage of this software requires a valid commercial license from **OpenVideo**.
+- **Free License**: Free for individuals, non-profits, and organizations with up to 3 employees.
+- **Company License**: Required for organizations with more than 3 employees.
 
-For commercial licensing inquiries, please contact **OpenVideo**.
 
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
+For commercial licensing, custom integrations, or enterprise support, contact us at [cloud@openvideo.dev](mailto:cloud@openvideo.dev).

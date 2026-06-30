@@ -15,7 +15,10 @@ export const useIsDraggingOverTimeline = () => {
       const target = e.target as HTMLElement;
       const relatedTarget = e.relatedTarget as HTMLElement;
       // Only set to false if we're leaving the timeline entirely
-      if (target?.closest('[data-timeline="true"]') && !relatedTarget?.closest('[data-timeline="true"]')) {
+      if (
+        target?.closest('[data-timeline="true"]') &&
+        !relatedTarget?.closest('[data-timeline="true"]')
+      ) {
         setIsDraggingOverTimeline(false);
       }
     };

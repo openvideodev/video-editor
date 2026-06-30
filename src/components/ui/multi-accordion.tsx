@@ -1,7 +1,7 @@
 "use client";
 import React, { ReactNode, ReactElement, isValidElement } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown } from "lucide-react";
+import { RiArrowDownSLine } from "@remixicon/react";
 import { cn } from "@/lib/utils";
 import { Separator } from "./separator";
 
@@ -137,7 +137,7 @@ export function AccordionHeader({
         {children}
       </div>
       {!customIcon && (
-        <ChevronDown
+        <RiArrowDownSLine
           className={cn("transition-transform size-4 ", isActive ? "rotate-180" : "rotate-0")}
         />
       )}

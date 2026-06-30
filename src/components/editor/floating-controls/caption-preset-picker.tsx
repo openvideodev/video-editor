@@ -1,10 +1,10 @@
 "use client";
-import React, { useEffect, useRef } from "react";
-import { CircleOff, XIcon } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { RiProhibitedLine, RiCloseLine } from "@remixicon/react";
 import useLayoutStore from "../store/use-layout-store";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ICaptionsControlProps } from "../interface/captions";
-import { NONE_PRESET, CAPTION_PRESETS } from "../constant/caption";
+import { NONE_PRESET, CAPTION_PRESETS } from "../constants/caption";
 
 import { useStudioStore } from "@/stores/studio-store";
 import { fontManager } from "@openvideo/engine-pixi";
@@ -80,13 +80,13 @@ const CaptionPresetPicker = () => {
       align: preset.textAlign as any,
       caption: {
         colors: {
-          appeared: preset.appearedColor,
-          active: preset.activeColor,
-          activeFill: preset.activeFillColor,
-          background: preset.backgroundColor,
-          keyword: preset.isKeywordColor ?? "transparent",
+          active: { color: preset.activeColor, background: preset.activeFillColor },
+          future: { color: preset.appearedColor },
+          keyword: {
+            color: preset.isKeywordColor ?? "transparent",
+            preserveAfterSpoken: preset.preservedColorKeyWord ?? false,
+          },
         },
-        preserveKeywordColor: preset.preservedColorKeyWord ?? false,
       },
       animation: preset.animation || "undefined",
       textCase: preset.textTransform || "normal",
@@ -141,18 +141,18 @@ const CaptionPresetPicker = () => {
   const PresetGrid = ({ presets }: { presets: ICaptionsControlProps[] }) => (
     <div className="grid grid-cols-2 gap-2 p-4">
       <div
-        className="flex h-[70px] cursor-pointer items-center justify-center bg-zinc-800 rounded-lg hover:bg-zinc-700 transition-colors"
+        className="flex h-[70px] cursor-pointer items-center justify-center bg-secondary rounded-lg hover:bg-secondary/80 transition-colors"
         onClick={() => {
           handleApplyPreset(NONE_PRESET);
         }}
       >
-        <CircleOff />
+        <RiProhibitedLine />
       </div>
 
       {presets.map((preset, index) => (
         <div
           key={index}
-          className="text-md flex h-[70px] cursor-pointer items-center justify-center bg-zinc-800 overflow-hidden rounded-lg hover:ring-2 hover:ring-primary transition-all"
+          className="text-md flex h-[70px] cursor-pointer items-center justify-center bg-secondary overflow-hidden rounded-lg hover:ring-2 hover:ring-primary transition-all"
           onClick={() => handleApplyPreset(preset)}
         >
           {preset.previewUrl ? (
@@ -180,7 +180,7 @@ const CaptionPresetPicker = () => {
       <div className="flex items-center justify-between px-4 py-3 border-b">
         <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Presets</p>
         <button onClick={() => setFloatingControl("")}>
-          <XIcon className="h-4 w-4 cursor-pointer text-muted-foreground hover:text-white transition-colors" />
+          <RiCloseLine className="h-4 w-4 cursor-pointer text-muted-foreground hover:text-white transition-colors" />
         </button>
       </div>
       <ScrollArea className="h-[400px]">

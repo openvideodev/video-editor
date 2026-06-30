@@ -1,17 +1,21 @@
 "use client";
 import { useState, useEffect } from "react";
+import { Resizable } from "@/components/editor/resizable-panel";
+import { useParams } from "next/navigation";
 import { MediaPanel } from "@/components/editor/media-panel";
 import { CanvasPanel } from "@/components/editor/canvas-panel";
 import Timeline from "@/components/editor/timeline";
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { usePanelStore } from "@/stores/panel-store";
-import Header from "@/components/editor/header";
 import { Loading } from "@/components/editor/loading";
 import FloatingControl from "@/components/editor/floating-controls/floating-control";
 import { Compositor } from "@openvideo/engine-pixi";
 import { WebCodecsUnsupportedModal } from "@/components/editor/webcodecs-unsupported-modal";
-import { type IProject } from "@openvideo/core";
+import { RightPanel } from "./right-panel";
 import { core } from "@/lib/project";
+import { IProject } from "@openvideo/core";
+import { useProjectStore } from "@/stores/project-store";
+import Header from "./header";
+import { data } from "./data";
 
 export default function Editor({
   initialDesign,
@@ -19,17 +23,20 @@ export default function Editor({
   isDataLoading?: boolean;
   initialDesign?: IProject;
 }) {
-  const { toolsPanel, mainContent, timeline, setToolsPanel, setMainContent, setTimeline } =
-    usePanelStore();
+  const resetProject = useProjectStore((state) => state.resetProject);
+  const { editorMode, showLeftPanel, showRightPanel, showTimeline } = usePanelStore();
 
   const [isReady, setIsReady] = useState(false);
   const [isWebCodecsSupported, setIsWebCodecsSupported] = useState(true);
 
+  // Load default template on mount
   useEffect(() => {
-    if (initialDesign) {
-      core.project.import(initialDesign);
-    }
-  }, [initialDesign]);
+    resetProject();
+    core.project.new();
+    setTimeout(() => {
+      core.project.import(data);
+    }, 500);
+  }, [resetProject]);
 
   useEffect(() => {
     const checkSupport = async () => {
@@ -39,6 +46,13 @@ export default function Editor({
     checkSupport();
   }, []);
 
+  // Clear loading screen for non-editor modes (CanvasPanel doesn't mount, onReady never fires)
+  useEffect(() => {
+    if (editorMode !== "editor") {
+      setIsReady(true);
+    }
+  }, [editorMode]);
+
   return (
     <div className="h-screen w-screen flex flex-col bg-background overflow-hidden">
       {!isReady && (
@@ -46,57 +60,48 @@ export default function Editor({
           <Loading />
         </div>
       )}
+
+      {/* Header — full width */}
       <Header />
-      <div className="flex-1 min-h-0 min-w-0">
-        <ResizablePanelGroup direction="horizontal" className="h-full w-full gap-0">
-          {/* Left Column: Media Panel */}
-          <ResizablePanel
-            defaultSize={toolsPanel}
-            minSize={15}
-            maxSize={40}
-            onResize={setToolsPanel}
-            className="max-w-7xl relative overflow-visible! bg-card min-w-0"
-          >
+
+      {/* Main content row: left sidebar + center + right sidebar */}
+      <div className="flex-1 min-h-0 flex flex-row overflow-hidden">
+        {/* Left Sidebar: Media Panel */}
+        {showLeftPanel && (
+          <Resizable orientation="horizontal" initialSize={300} min={180} max={520} direction="right">
             <MediaPanel />
-            <FloatingControl />
-          </ResizablePanel>
+          </Resizable>
+        )}
 
-          <ResizableHandle className="bg-border/90" />
+        {/* Center: Canvas (top) + Timeline (bottom) */}
+        <div className="flex-1 min-w-0 h-full flex flex-col overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-visible">
+            <CanvasPanel onReady={() => setIsReady(true)} />
+          </div>
+          {showTimeline && (
+            <Resizable orientation="vertical" initialSize={260} min={200} max={500} direction="up">
+              <Timeline />
+            </Resizable>
+          )}
+        </div>
 
-          {/* Middle Column: Preview + Timeline */}
-          <ResizablePanel defaultSize={100 - toolsPanel} minSize={40} className="min-w-0 min-h-0">
-            <ResizablePanelGroup direction="vertical" className="h-full w-full gap-0">
-              {/* Canvas Panel */}
-              <ResizablePanel
-                defaultSize={mainContent}
-                minSize={30}
-                maxSize={85}
-                onResize={setMainContent}
-                className="min-h-0"
-              >
-                <CanvasPanel
-                  onReady={() => {
-                    setIsReady(true);
-                  }}
-                />
-              </ResizablePanel>
-
-              <ResizableHandle className="bg-border/90" />
-
-              {/* Timeline Panel */}
-              <ResizablePanel
-                defaultSize={timeline}
-                minSize={15}
-                maxSize={70}
-                onResize={setTimeline}
-                className="min-h-0"
-              >
-                <Timeline />
-              </ResizablePanel>
-            </ResizablePanelGroup>
-          </ResizablePanel>
-        </ResizablePanelGroup>
+        {showRightPanel && (
+          <Resizable
+            orientation="horizontal"
+            initialSize={280}
+            min={180}
+            max={520}
+            direction="left"
+            className="right-resizable-panel"
+          >
+            <RightPanel />
+          </Resizable>
+        )}
       </div>
+
+
+      {/* Floating Controls like Caption / Animation pickers */}
+      <FloatingControl />
 
       {/* WebCodecs Support Check Modal */}
       <WebCodecsUnsupportedModal open={!isWebCodecsSupported} />

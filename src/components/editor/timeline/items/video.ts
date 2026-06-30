@@ -11,7 +11,13 @@ import ThumbnailCache from "../../utils/thumbnail-cache";
 import { IDisplay, IMetadata, ITrim } from "@openvideo/timeline";
 import { calculateOffscreenSegments, calculateThumbnailSegmentLayout } from "../../utils/filmstrip";
 import { createMediaControls } from "../controls";
-import { SECONDARY_FONT } from "../../constants/constants";
+import {
+  SECONDARY_FONT,
+  TIMELINE_SELECTED_BORDER_COLOR,
+  TIMELINE_UNSELECTED_BORDER_COLOR,
+  TIMELINE_BORDER_WIDTH,
+  TIMELINE_ITEM_BORDER_RADIUS,
+} from "../../constants/constants";
 import { extractFrames } from "../../utils/mediabunny";
 
 const EMPTY_FILMSTRIP: Filmstrip = {
@@ -84,8 +90,8 @@ class Video extends Trimmable {
     this.id = props.id;
     this.tScale = props.tScale;
     this.objectCaching = false;
-    this.rx = 0;
-    this.ry = 0;
+    this.rx = TIMELINE_ITEM_BORDER_RADIUS;
+    this.ry = TIMELINE_ITEM_BORDER_RADIUS;
     this.display = props.display;
     this.trim = props.trim;
     this.duration = props.duration;
@@ -178,22 +184,13 @@ class Video extends Trimmable {
 
   // load fallback thumbnail, resize it and cache it
   private async loadFallbackThumbnail() {
-    let fallbackThumbnail = this.previewUrl;
-
-    // If no preview URL provided, extract a frame from the video source
-    if (!fallbackThumbnail && this.src) {
-      fallbackThumbnail = await this.extractPreviewFrame();
-      this.previewUrl = fallbackThumbnail;
-    }
-
+    const fallbackThumbnail = this.previewUrl;
     if (!fallbackThumbnail) return;
 
     return new Promise<void>((resolve) => {
       const img = new Image();
       img.crossOrigin = "anonymous";
-      // Only add cache-busting for HTTP URLs, not data URLs
-      const isDataUrl = fallbackThumbnail.startsWith("data:");
-      img.src = isDataUrl ? fallbackThumbnail : `${fallbackThumbnail}?t=${Date.now()}`;
+      img.src = `${fallbackThumbnail}?t=${Date.now()}`;
       img.onload = () => {
         // Create a temporary canvas to resize the image
         const canvas = document.createElement("canvas");
@@ -218,42 +215,6 @@ class Video extends Trimmable {
         this.thumbnailCache.setThumbnail("fallback", resizedImg);
         resolve();
       };
-    });
-  }
-
-  private async extractPreviewFrame(): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const controller = new AbortController();
-      const { signal } = controller;
-
-      // Set a timeout to abort if it takes too long
-      const timeout = setTimeout(() => controller.abort(), 30000);
-
-      extractFrames({
-        src: this.src,
-        timestampsInSeconds: [0.1], // Extract at 100ms to avoid any black frames at start
-        signal,
-        onVideoSample: (sample) => {
-          clearTimeout(timeout);
-
-          using frame = sample;
-          const canvas = document.createElement("canvas");
-          canvas.width = frame.displayWidth;
-          canvas.height = frame.displayHeight;
-          const ctx = canvas.getContext("2d");
-
-          if (!ctx) {
-            reject(new Error("Failed to get canvas context"));
-            return;
-          }
-
-          frame.draw(ctx, 0, 0);
-          resolve(canvas.toDataURL("image/jpeg", 0.8));
-        },
-      }).catch((error) => {
-        clearTimeout(timeout);
-        reject(error);
-      });
     });
   }
 
@@ -379,7 +340,7 @@ class Video extends Trimmable {
 
     // Clip the area to prevent drawing outside
     ctx.beginPath();
-    ctx.rect(0, 0, this.width, this.height);
+    ctx.roundRect(0, 0, this.width, this.height, this.rx);
     ctx.clip();
 
     this.renderToOffscreen();
@@ -479,16 +440,18 @@ class Video extends Trimmable {
   }
 
   public updateSelected(ctx: CanvasRenderingContext2D) {
-    const borderColor = this.isSelected ? "rgba(255, 255, 255,1.0)" : "rgba(255, 255, 255,0.05)";
-    const borderWidth = 1.5;
-    const innerRadius = 0;
+    const borderColor = this.isSelected
+      ? TIMELINE_SELECTED_BORDER_COLOR
+      : TIMELINE_UNSELECTED_BORDER_COLOR;
+    const borderWidth = TIMELINE_BORDER_WIDTH;
+    const borderRadius = TIMELINE_ITEM_BORDER_RADIUS;
 
     ctx.save();
     ctx.fillStyle = borderColor;
 
-    // Create a path for the outer rectangle (no radius)
+    // Create a path for the outer rectangle with rounded corners
     ctx.beginPath();
-    ctx.rect(-this.width / 2, -this.height / 2, this.width, this.height);
+    ctx.roundRect(-this.width / 2, -this.height / 2, this.width, this.height, borderRadius);
 
     // Create a path for the inner rectangle with rounded corners (the hole)
     ctx.roundRect(
@@ -496,7 +459,7 @@ class Video extends Trimmable {
       -this.height / 2 + borderWidth,
       this.width - borderWidth * 2,
       this.height - borderWidth * 2,
-      innerRadius,
+      Math.max(0, borderRadius - borderWidth),
     );
 
     // Use even-odd fill rule to create the border effect

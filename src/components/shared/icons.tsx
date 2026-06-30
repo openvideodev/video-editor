@@ -1,20 +1,32 @@
-import {
-  AlertTriangle,
-  LucideIcon,
-  LucideProps,
-  User,
-  VideoIcon,
-  Crop,
-  Check,
-  Menu,
-  Loader2,
-} from "lucide-react";
+"use client";
 
-export type Icon = LucideIcon;
+import * as React from "react";
+import {
+  RiAlertLine,
+  RiUserLine,
+  RiImage2Line,
+  RiCropLine,
+  RiCheckLine,
+  RiListCheck,
+  RiLoader5Line,
+} from "@remixicon/react";
+
+export type Icon = React.ComponentType<React.SVGProps<SVGSVGElement>>;
+
+export const TextOverline = React.forwardRef<SVGSVGElement, React.ComponentPropsWithoutRef<"svg">>(
+  (props, ref) => (
+    <svg ref={ref} viewBox="0 0 256 256" fill="currentColor" {...props}>
+      <path d="M192,104v40a64,64,0,0,1-128,0V104a8,8,0,0,1,16,0v40a48,48,0,0,0,96,0V104a8,8,0,0,1,16,0ZM216,64a8,8,0,0,1-8,8H48a8,8,0,0,1,0-16H208A8,8,0,0,1,216,64Z" />
+    </svg>
+  ),
+);
+TextOverline.displayName = "TextOverline";
+
+type SVGIconProps = React.SVGProps<SVGSVGElement>;
 
 export const Icons = {
-  spinner: Loader2,
-  gitHub: ({ ...props }: LucideProps) => (
+  spinner: RiLoader5Line,
+  gitHub: ({ ...props }: SVGIconProps) => (
     <svg
       aria-hidden="true"
       focusable="false"
@@ -31,7 +43,7 @@ export const Icons = {
       />
     </svg>
   ),
-  google: ({ ...props }: LucideProps) => (
+  google: ({ ...props }: SVGIconProps) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" {...props}>
       <path
         fill="none"
@@ -44,7 +56,7 @@ export const Icons = {
     </svg>
   ),
 
-  ai: ({ ...props }: LucideProps) => (
+  ai: ({ ...props }: SVGIconProps) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" {...props}>
       <g fill="none">
         <path
@@ -63,7 +75,7 @@ export const Icons = {
       </g>
     </svg>
   ),
-  undo: ({ ...props }: LucideProps) => (
+  undo: ({ ...props }: SVGIconProps) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" {...props}>
       <path
         fill="currentColor"
@@ -73,7 +85,7 @@ export const Icons = {
       />
     </svg>
   ),
-  redo: ({ ...props }: LucideProps) => (
+  redo: ({ ...props }: SVGIconProps) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" {...props}>
       <path
         fill="currentColor"
@@ -83,12 +95,12 @@ export const Icons = {
       />
     </svg>
   ),
-  user: User,
-  video: VideoIcon,
-  warning: AlertTriangle,
-  crop: Crop,
-  check: Check,
-  discord: ({ ...props }: LucideProps) => (
+  user: RiUserLine,
+  video: RiImage2Line,
+  warning: RiAlertLine,
+  crop: RiCropLine,
+  check: RiCheckLine,
+  discord: ({ ...props }: SVGIconProps) => (
     <svg
       viewBox="0 0 256 199"
       xmlns="http://www.w3.org/2000/svg"
@@ -101,7 +113,7 @@ export const Icons = {
       />
     </svg>
   ),
-  github: ({ ...props }: LucideProps) => (
+  github: ({ ...props }: SVGIconProps) => (
     <svg
       xmlns="http://www.w3.org/2000/svg"
       width="24"
@@ -118,8 +130,8 @@ export const Icons = {
       <path d="M9 18c-4.51 2-5-2-7-2" />
     </svg>
   ),
-  menu: Menu,
-  sparkle: ({ ...props }: LucideProps) => (
+  menu: RiListCheck,
+  sparkle: ({ ...props }: SVGIconProps) => (
     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
       <path
         d="M10.0124 4.35349C10.6104 2.60349 13.0284 2.55049 13.7374 4.19449L13.7974 4.35449L14.6044 6.71449C14.7893 7.25572 15.0882 7.751 15.4808 8.16691C15.8734 8.58283 16.3507 8.9097 16.8804 9.12549L17.0974 9.20649L19.4574 10.0125C21.2074 10.6105 21.2604 13.0285 19.6174 13.7375L19.4574 13.7975L17.0974 14.6045C16.556 14.7893 16.0605 15.0881 15.6444 15.4807C15.2283 15.8734 14.9013 16.3507 14.6854 16.8805L14.6044 17.0965L13.7984 19.4575C13.2004 21.2075 10.7824 21.2605 10.0744 19.6175L10.0124 19.4575L9.20638 17.0975C9.02156 16.5561 8.72275 16.0606 8.33012 15.6445C7.93749 15.2284 7.46017 14.9014 6.93038 14.6855L6.71438 14.6045L4.35438 13.7985C2.60338 13.2005 2.55038 10.7825 4.19438 10.0745L4.35438 10.0125L6.71438 9.20649C7.25561 9.02155 7.75089 8.72269 8.1668 8.33006C8.58271 7.93744 8.90959 7.46018 9.12538 6.93049L9.20638 6.71449L10.0124 4.35349Z"
@@ -127,7 +139,7 @@ export const Icons = {
       />
     </svg>
   ),
-  transition: (props: LucideProps) => (
+  transition: (props: SVGIconProps) => (
     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
       <path
         d="M3 5.30359C3 3.93159 4.659 3.24359 5.629 4.21359L11.997 10.5826L10.583 11.9966L5 6.41359V17.5856L10.586 11.9996L10.583 11.9966L11.997 10.5826L12 10.5856L18.371 4.21459C19.341 3.24459 21 3.93159 21 5.30359V18.6956C21 20.0676 19.341 20.7556 18.371 19.7856L12 13.5L13.414 11.9996L19 17.5866V6.41359L13.414 11.9996L13.421 12.0056L12.006 13.4206L12 13.4136L5.629 19.7846C4.659 20.7546 3 20.0676 3 18.6956V5.30359Z"

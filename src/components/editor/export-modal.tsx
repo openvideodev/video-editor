@@ -13,25 +13,54 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Video, Music, Clock, Settings2 } from "lucide-react";
+import {
+  RiLoader5Line,
+  RiTimeLine,
+  RiSettings3Line,
+  RiMusic2Line,
+  RiVideoLine,
+} from "@remixicon/react";
 import { useStudioStore } from "@/stores/studio-store";
+
+export interface ResolutionPreset {
+  value: string;
+  label: string;
+  badge: string;
+  bitrate: number;
+  fps: number;
+  codec: string;
+  format: string;
+}
 
 interface ExportModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialPresetLabel?: string;
+  autoStart?: boolean;
+  customSettings?: {
+    includeVideo?: boolean;
+    videoCodec?: string;
+    quality?: string;
+    format?: string;
+    fps?: string;
+    resolution?: string;
+    includeAudio?: boolean;
+    audioCodec?: string;
+    audioSampleRate?: string;
+  };
 }
 
 // ---------------------------------------------------------------------------
 // Option definitions (sourced from mediabunny's supported formats/codecs)
 // ---------------------------------------------------------------------------
 
-const VIDEO_CODECS = [
+export const VIDEO_CODECS = [
   { value: "avc1.640033", label: "H.264 (AVC)", maxHeight: 2160 },
   { value: "hvc1.1.6.L153.B0", label: "H.265 (HEVC)", maxHeight: 2160 },
   { value: "vp09.00.51.08", label: "VP9", maxHeight: 2160 },
 ];
 
-const AUDIO_CODECS = [
+export const AUDIO_CODECS = [
   { value: "aac", label: "AAC" },
   { value: "opus", label: "Opus" },
   { value: "mp3", label: "MP3" },
@@ -39,7 +68,7 @@ const AUDIO_CODECS = [
 ];
 
 // Which container formats work with which video codecs
-const VIDEO_FORMATS = [
+export const VIDEO_FORMATS = [
   {
     value: "mp4",
     label: "MP4",
@@ -54,14 +83,14 @@ const VIDEO_FORMATS = [
   { value: "mov", label: "MOV", codecs: ["avc1.640033", "hvc1.1.6.L153.B0"] },
 ];
 
-const AUDIO_FORMATS = [
+export const AUDIO_FORMATS = [
   { value: "mp3", label: "MP3" },
   { value: "wav", label: "WAV" },
   { value: "flac", label: "FLAC" },
   { value: "ogg", label: "OGG" },
 ];
 
-const FRAME_RATES = [
+export const FRAME_RATES = [
   { value: "23.976", label: "23.976 fps (Film)" },
   { value: "24", label: "24 fps" },
   { value: "25", label: "25 fps (PAL)" },
@@ -73,17 +102,7 @@ const FRAME_RATES = [
   { value: "15", label: "15 fps" },
 ];
 
-interface ResolutionPreset {
-  value: string;
-  label: string;
-  badge: string;
-  bitrate: number;
-  fps: number;
-  codec: string;
-  format: string;
-}
-
-const RESOLUTION_GROUPS: { group: string; items: ResolutionPreset[] }[] = [
+export const RESOLUTION_GROUPS: { group: string; items: ResolutionPreset[] }[] = [
   {
     group: "Standard",
     items: [
@@ -191,9 +210,9 @@ const RESOLUTION_GROUPS: { group: string; items: ResolutionPreset[] }[] = [
   },
 ];
 
-const RESOLUTION_PRESETS = RESOLUTION_GROUPS.flatMap((g) => g.items);
+export const RESOLUTION_PRESETS = RESOLUTION_GROUPS.flatMap((g) => g.items);
 
-const SAMPLE_RATES = [
+export const SAMPLE_RATES = [
   { value: "44100", label: "44.1 kHz" },
   { value: "48000", label: "48 kHz" },
 ];
@@ -202,7 +221,7 @@ const SAMPLE_RATES = [
 // Shared UI primitives
 // ---------------------------------------------------------------------------
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
+export function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-4">
       <span className="text-xs text-muted-foreground shrink-0">{label}</span>
@@ -237,7 +256,12 @@ function suppressRenderLoop(): () => void {
     return id;
   };
   win.cancelAnimationFrame = (id) => {
-    if (!queued.delete(id)) originalCAF(id);
+    // Only handle IDs in our range. Pre-suppression IDs (< 0x70000000)
+    // may be stale/invalid - don't try to cancel them with original RAF.
+    if (id >= 0x70000000) {
+      queued.delete(id);
+    }
+    // Silently ignore cancel for IDs outside our range (pre-suppression)
   };
 
   return () => {
@@ -248,7 +272,13 @@ function suppressRenderLoop(): () => void {
   };
 }
 
-export function ExportModal({ open, onOpenChange }: ExportModalProps) {
+export function ExportModal({
+  open,
+  onOpenChange,
+  initialPresetLabel,
+  autoStart,
+  customSettings,
+}: ExportModalProps) {
   const { studio } = useStudioStore();
   const studioOpts = studio?.getOptions() || {
     width: 1920,
@@ -347,6 +377,44 @@ export function ExportModal({ open, onOpenChange }: ExportModalProps) {
     if (!open) resetState();
   }, [open]);
 
+  useEffect(() => {
+    if (open) {
+      if (customSettings) {
+        if (customSettings.includeVideo !== undefined) setIncludeVideo(customSettings.includeVideo);
+        if (customSettings.videoCodec !== undefined) setVideoCodec(customSettings.videoCodec);
+        if (customSettings.quality !== undefined) setQuality(customSettings.quality);
+        if (customSettings.format !== undefined) setFormat(customSettings.format);
+        if (customSettings.fps !== undefined) setFps(customSettings.fps);
+        if (customSettings.resolution !== undefined) setResolution(customSettings.resolution);
+        if (customSettings.includeAudio !== undefined) setIncludeAudio(customSettings.includeAudio);
+        if (customSettings.audioCodec !== undefined) setAudioCodec(customSettings.audioCodec);
+        if (customSettings.audioSampleRate !== undefined)
+          setAudioSampleRate(customSettings.audioSampleRate);
+
+        if (autoStart) {
+          const customPreset = {
+            label: customSettings.resolution || resolution,
+            bitrate: Number(customSettings.quality || quality),
+            fps: Number(customSettings.fps || fps),
+            format: customSettings.format || format,
+            codec: customSettings.videoCodec || videoCodec,
+            value: "",
+            badge: "",
+          };
+          startExport(customPreset);
+        }
+      } else if (initialPresetLabel) {
+        const preset = RESOLUTION_PRESETS.find((r) => r.label === initialPresetLabel);
+        if (preset) {
+          applyPreset(preset);
+          if (autoStart) {
+            startExport(preset);
+          }
+        }
+      }
+    }
+  }, [open, initialPresetLabel, customSettings, autoStart]);
+
   const handleDownload = (url?: string) => {
     const downloadUrl = url || exportBlobUrl;
     if (!downloadUrl) return;
@@ -361,7 +429,7 @@ export function ExportModal({ open, onOpenChange }: ExportModalProps) {
     }, 100);
   };
 
-  const startExport = async () => {
+  const startExport = async (targetPreset?: ResolutionPreset) => {
     if (!studio) return;
 
     // Pause interactive playback/rendering while exporting to avoid
@@ -387,7 +455,11 @@ export function ExportModal({ open, onOpenChange }: ExportModalProps) {
         throw new Error("No clips to export");
 
       const settings = json.settings || {};
-      const resolvedPreset = RESOLUTION_PRESETS.find((r) => r.label === resolution);
+      const resolvedPreset = targetPreset || RESOLUTION_PRESETS.find((r) => r.label === resolution);
+      const activeQuality = targetPreset ? String(targetPreset.bitrate) : quality;
+      const activeFps = targetPreset ? String(targetPreset.fps) : fps;
+      const activeFormat = targetPreset ? targetPreset.format : format;
+      const activeCodec = targetPreset ? targetPreset.codec : videoCodec;
 
       // Determine export dimensions, respecting project aspect ratio
       const projectWidth = settings.width || studioOpts.width || 1920;
@@ -416,11 +488,11 @@ export function ExportModal({ open, onOpenChange }: ExportModalProps) {
       const compositorOptions: any = {
         width: includeVideo ? exportWidth : 0,
         height: includeVideo ? exportHeight : 0,
-        fps: Number(fps),
+        fps: Number(activeFps),
         backgroundColor: settings.backgroundColor || "#000000",
-        format,
-        videoCodec: includeVideo ? videoCodec : undefined,
-        bitrate: Number(quality),
+        format: activeFormat,
+        videoCodec: includeVideo ? activeCodec : undefined,
+        bitrate: Number(activeQuality),
         audio: includeAudio ? true : false,
         audioCodec: includeAudio ? audioCodec : undefined,
         audioSampleRate: includeAudio ? Number(audioSampleRate) : undefined,
@@ -519,7 +591,7 @@ export function ExportModal({ open, onOpenChange }: ExportModalProps) {
                         key={group.group + preset.label}
                         onClick={() => {
                           applyPreset(preset);
-                          startExport();
+                          startExport(preset);
                         }}
                         className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-muted/60 transition-colors text-left group"
                       >
@@ -549,7 +621,7 @@ export function ExportModal({ open, onOpenChange }: ExportModalProps) {
                   >
                     <span className="text-sm text-foreground">Custom</span>
                     <div className="flex items-center gap-3">
-                      <Settings2 className="w-3.5 h-3.5 text-muted-foreground" />
+                      <RiSettings3Line className="w-3.5 h-3.5 text-muted-foreground" />
                     </div>
                   </button>
                 </div>
@@ -584,7 +656,7 @@ export function ExportModal({ open, onOpenChange }: ExportModalProps) {
               <div className="rounded-xl border border-border bg-card overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-border">
                   <div className="flex items-center gap-2">
-                    <Video className="w-3.5 h-3.5 text-muted-foreground" />
+                    <RiVideoLine className="w-3.5 h-3.5 text-muted-foreground" />
                     <span className="text-xs font-medium text-foreground">Video</span>
                   </div>
                   <Switch checked={includeVideo} onCheckedChange={setIncludeVideo} />
@@ -664,7 +736,7 @@ export function ExportModal({ open, onOpenChange }: ExportModalProps) {
               <div className="rounded-xl border border-border bg-card overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-border">
                   <div className="flex items-center gap-2">
-                    <Music className="w-3.5 h-3.5 text-muted-foreground" />
+                    <RiMusic2Line className="w-3.5 h-3.5 text-muted-foreground" />
                     <span className="text-xs font-medium text-foreground">Audio</span>
                   </div>
                   <Switch checked={includeAudio} onCheckedChange={setIncludeAudio} />
@@ -722,7 +794,7 @@ export function ExportModal({ open, onOpenChange }: ExportModalProps) {
               {/* Footer */}
               <div className="flex items-center justify-between mt-1">
                 <div className="flex items-center gap-1.5 text-muted-foreground">
-                  <Clock className="w-3 h-3" />
+                  <RiTimeLine className="w-3 h-3" />
                   <span className="text-[11px]">{(maxDuration / 1e6).toFixed(2)}s</span>
                 </div>
                 <div className="flex gap-2">
@@ -734,7 +806,7 @@ export function ExportModal({ open, onOpenChange }: ExportModalProps) {
                     Cancel
                   </Button>
                   <Button
-                    onClick={startExport}
+                    onClick={() => startExport()}
                     className="h-8 px-5 text-xs rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
                   >
                     Export
@@ -818,7 +890,7 @@ export function ExportModal({ open, onOpenChange }: ExportModalProps) {
               onClick={handleClose}
               className="w-full h-9 text-xs rounded-xl border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted"
             >
-              {isExporting && <Loader2 className="h-3.5 w-3.5 mr-2" />}
+              {isExporting && <RiLoader5Line className="h-3.5 w-3.5 mr-2" />}
               Cancel Export
             </Button>
           </div>

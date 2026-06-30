@@ -29,7 +29,14 @@ type EffectCardProps = {
   effectKey?: string;
 };
 
-const EffectCard = ({ label, staticSrc, dynamicSrc, onClick, badge, effectKey }: EffectCardProps) => {
+const EffectCard = ({
+  label,
+  staticSrc,
+  dynamicSrc,
+  onClick,
+  badge,
+  effectKey,
+}: EffectCardProps) => {
   const [isDynamicLoaded, setIsDynamicLoaded] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
   const isDraggingOverTimeline = useIsDraggingOverTimeline();
@@ -45,7 +52,7 @@ const EffectCard = ({ label, staticSrc, dynamicSrc, onClick, badge, effectKey }:
       }}
       shouldDisplayPreview={!isDraggingOverTimeline}
       renderCustomPreview={
-        <div className="w-20 aspect-video rounded-md overflow-hidden shadow-xl border-2 border-primary bg-zinc-900 flex items-center justify-center">
+        <div className="w-20 aspect-video overflow-hidden shadow-xl border-2 border-primary bg-secondary flex items-center justify-center">
           <span className="text-[10px] text-white font-medium px-2 text-center">{label}</span>
         </div>
       }
@@ -63,7 +70,7 @@ const EffectCard = ({ label, staticSrc, dynamicSrc, onClick, badge, effectKey }:
         }}
         onMouseLeave={() => setIsHovering(false)}
       >
-        <div className="relative w-full aspect-video rounded-md bg-input/30 border overflow-hidden">
+        <div className="relative w-full aspect-video bg-input/30 border overflow-hidden">
           {staticSrc || dynamicSrc ? (
             <div
               className="absolute inset-0 w-full h-full bg-cover bg-center transition-opacity duration-200"
@@ -80,12 +87,12 @@ const EffectCard = ({ label, staticSrc, dynamicSrc, onClick, badge, effectKey }:
           )}
           {isHovering && dynamicSrc && !isDynamicLoaded && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-              <div className="w-6 h-6 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+              <div className="w-6 h-6 border-2 border-white/40 border-t-white animate-spin" />
             </div>
           )}
 
           {badge && (
-            <div className="absolute top-1 right-1 bg-primary/80 text-primary-foreground text-[9px] font-semibold px-1.5 py-0.5 rounded-full leading-none">
+            <div className="absolute top-1 right-1 bg-primary/80 text-primary-foreground text-[9px] font-semibold px-1.5 py-0.5 leading-none">
               {badge}
             </div>
           )}
@@ -137,7 +144,6 @@ const CombinedEffects = () => {
       effectKey: key,
       display: { from: 0, to: EFFECT_DURATION_DEFAULT },
       duration: EFFECT_DURATION_DEFAULT,
-    
     });
   };
 
@@ -199,6 +205,6 @@ const PanelEffect = () => {
       </ScrollArea>
     </div>
   );
-}
+};
 
 export default PanelEffect;

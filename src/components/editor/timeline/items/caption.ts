@@ -1,7 +1,13 @@
 import { Control, Resizable, ResizableProps } from "@openvideo/timeline";
 import { IDisplay } from "@openvideo/timeline";
 import { createResizeControls } from "../controls";
-import { SECONDARY_FONT } from "../../constants/constants";
+import {
+  SECONDARY_FONT,
+  TIMELINE_SELECTED_BORDER_COLOR,
+  TIMELINE_UNSELECTED_BORDER_COLOR,
+  TIMELINE_BORDER_WIDTH,
+  TIMELINE_ITEM_BORDER_RADIUS,
+} from "../../constants/constants";
 
 interface CaptionsProps extends ResizableProps {
   tScale: number;
@@ -19,12 +25,12 @@ class Caption extends Resizable {
 
   constructor(props: CaptionsProps) {
     super(props);
-    this.fill = "#701a75";
+    this.fill = "#00849a";
     this.tScale = props.tScale;
     this.display = props.display;
     this.text = props.text;
-    this.rx = 0;
-    this.ry = 0;
+    this.rx = TIMELINE_ITEM_BORDER_RADIUS;
+    this.ry = TIMELINE_ITEM_BORDER_RADIUS;
 
     this.borderColor = "transparent";
     this.stroke = "transparent";
@@ -39,57 +45,61 @@ class Caption extends Resizable {
 
   public drawTextIdentity(ctx: CanvasRenderingContext2D) {
     const textPath = new Path2D(
-      "M4 4.8C3.55817 4.8 3.2 5.15817 3.2 5.6C3.2 6.04183 3.55817 6.4 4 6.4H5.6C6.04183 6.4 6.4 6.04183 6.4 5.6C6.4 5.15817 6.04183 4.8 5.6 4.8H4Z M8.8 4.8C8.35817 4.8 8 5.15817 8 5.6C8 6.04183 8.35817 6.4 8.8 6.4H12C12.4418 6.4 12.8 6.04183 12.8 5.6C12.8 5.15817 12.4418 4.8 12 4.8H8.8Z M4 8C3.55817 8 3.2 8.35817 3.2 8.8C3.2 9.24183 3.55817 9.6 4 9.6H7.2C7.64183 9.6 8 9.24183 8 8.8C8 8.35817 7.64183 8 7.2 8H4Z M10.4 8C9.95817 8 9.6 8.35817 9.6 8.8C9.6 9.24183 9.95817 9.6 10.4 9.6H12C12.4418 9.6 12.8 9.24183 12.8 8.8C12.8 8.35817 12.4418 8 12 8H10.4Z M2.4 0C1.07452 0 0 1.07452 0 2.4V10.4C0 11.7255 1.07452 12.8 2.4 12.8H13.6C14.9255 12.8 16 11.7255 16 10.4V2.4C16 1.07452 14.9255 0 13.6 0H2.4ZM1.6 2.4C1.6 1.95817 1.95817 1.6 2.4 1.6H13.6C14.0418 1.6 14.4 1.95817 14.4 2.4V10.4C14.4 10.8418 14.0418 11.2 13.6 11.2H2.4C1.95817 11.2 1.6 10.8418 1.6 10.4V2.4Z",
+      "M12.6667 0C13.0349 0 13.3333 0.29848 13.3333 0.666667V11.3333C13.3333 11.7015 13.0349 12 12.6667 12H0.666667C0.29848 12 0 11.7015 0 11.3333V0.666667C0 0.29848 0.29848 0 0.666667 0H12.6667ZM12 1.33333H1.33333V10.6667H12V1.33333ZM4.66667 3.33333C5.403 3.33333 6.06993 3.63227 6.55267 4.11533L5.6102 5.05773C5.36893 4.81607 5.03533 4.66667 4.66667 4.66667C3.93 4.66667 3.33333 5.26333 3.33333 6C3.33333 6.73667 3.93 7.33333 4.66667 7.33333C5.035 7.33333 5.36833 7.18413 5.6096 6.94293L6.552 7.88533C6.06933 8.368 5.40267 8.66667 4.66667 8.66667C3.19467 8.66667 2 7.472 2 6C2 4.528 3.19467 3.33333 4.66667 3.33333ZM9.33333 3.33333C10.0697 3.33333 10.7366 3.63227 11.2193 4.11533L10.2769 5.05773C10.0356 4.81607 9.702 4.66667 9.33333 4.66667C8.59667 4.66667 8 5.26333 8 6C8 6.73667 8.59667 7.33333 9.33333 7.33333C9.70167 7.33333 10.035 7.18413 10.2763 6.94293L11.2187 7.88533C10.736 8.368 10.0693 8.66667 9.33333 8.66667C7.86133 8.66667 6.66667 7.472 6.66667 6C6.66667 4.528 7.86133 3.33333 9.33333 3.33333Z",
     );
     ctx.save();
+    ctx.clip();
     ctx.translate(-this.width / 2, -this.height / 2);
-    ctx.translate(0, 8);
+
+    // 1. Draw SVG Path first (icon)
+    ctx.save();
+    ctx.translate(12, (this.height - 12) / 2);
+    ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
+    ctx.fill(textPath);
+    ctx.restore();
+
+    // 2. Set font and measure/truncate text
     ctx.font = `400 12px ${SECONDARY_FONT}`;
     ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
     ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
 
-    // Calculate available width for text (full width minus icon space and right padding)
-    const iconSpace = 28; // space for the icon
+    const iconSpace = 30; // space for the icon (labels start at 30)
     const rightPadding = 5; // 5px padding before ellipsis
     const availableWidth = this.width - iconSpace - rightPadding;
 
-    // Measure and truncate text if needed
     let displayText = this.text;
     const textWidth = ctx.measureText(this.text).width;
 
     if (textWidth > availableWidth) {
       let currentText = this.text;
-
       while (
         ctx.measureText(`${currentText}...`).width > availableWidth &&
         currentText.length > 0
       ) {
         currentText = currentText.slice(0, -1);
       }
-
       displayText = `${currentText}...`;
     }
 
-    ctx.clip();
-    ctx.fillText(displayText, 28, 12);
-
-    ctx.translate(8, 1);
-    ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
-    ctx.fill(textPath);
+    // 3. Draw text second
+    ctx.fillText(displayText, 30, this.height / 2);
     ctx.restore();
   }
 
   public updateSelected(ctx: CanvasRenderingContext2D) {
-    const borderColor = this.isSelected ? "rgba(255, 255, 255,1.0)" : "rgba(255, 255, 255,0.05)";
-    const borderWidth = 1.5;
-    const innerRadius = 0;
+    const borderColor = this.isSelected
+      ? TIMELINE_SELECTED_BORDER_COLOR
+      : TIMELINE_UNSELECTED_BORDER_COLOR;
+    const borderWidth = TIMELINE_BORDER_WIDTH;
+    const borderRadius = TIMELINE_ITEM_BORDER_RADIUS;
 
     ctx.save();
     ctx.fillStyle = borderColor;
 
-    // Create a path for the outer rectangle (no radius)
+    // Create a path for the outer rectangle with rounded corners
     ctx.beginPath();
-    ctx.rect(-this.width / 2, -this.height / 2, this.width, this.height);
+    ctx.roundRect(-this.width / 2, -this.height / 2, this.width, this.height, borderRadius);
 
     // Create a path for the inner rectangle with rounded corners (the hole)
     ctx.roundRect(
@@ -97,7 +107,7 @@ class Caption extends Resizable {
       -this.height / 2 + borderWidth,
       this.width - borderWidth * 2,
       this.height - borderWidth * 2,
-      innerRadius,
+      Math.max(0, borderRadius - borderWidth),
     );
 
     // Use even-odd fill rule to create the border effect

@@ -4,11 +4,10 @@ import { useState, useEffect, useCallback } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { core } from "@/lib/project";
 import { Log } from "@openvideo/engine-pixi";
-import { Search, Image as ImageIcon, Loader2 } from "lucide-react";
+import { RiLoader5Line, RiImage2Line, RiSearchLine } from "@remixicon/react";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { debounce } from "lodash";
 import Draggable from "@/components/shared/draggable";
-import { useIsDraggingOverTimeline } from "@/hooks/use-is-dragging-over-timeline";
 
 interface PexelsImage {
   id: number;
@@ -33,7 +32,6 @@ export default function PanelImages() {
   const [searchQuery, setSearchQuery] = useState("");
   const [images, setImages] = useState<PexelsImage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const isDraggingOverTimeline = useIsDraggingOverTimeline();
 
   const fetchImages = async (query: string) => {
     setIsLoading(true);
@@ -79,7 +77,7 @@ export default function PanelImages() {
           type: "Image",
           src: asset.src.large2x,
           name: `Photo by ${asset.photographer}`,
-          display: { from: 0, to: 5_000_000 },
+          timing: { display: { from: 0, to: 5_000_000 } },
         },
         { objectFit: "contain" },
       );
@@ -94,7 +92,7 @@ export default function PanelImages() {
         <div className="p-4">
           <InputGroup>
             <InputGroupAddon className="bg-secondary/30 pointer-events-none text-muted-foreground w-8 justify-center">
-              <Search size={14} />
+              <RiSearchLine size={14} />
             </InputGroupAddon>
 
             <InputGroupInput
@@ -110,11 +108,11 @@ export default function PanelImages() {
       <ScrollArea className="flex-1 px-4">
         {isLoading && images.length === 0 ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="animate-spin text-muted-foreground" size={32} />
+            <RiLoader5Line className="animate-spin text-muted-foreground" size={32} />
           </div>
         ) : images.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 text-muted-foreground gap-2">
-            <ImageIcon size={32} className="opacity-50" />
+            <RiImage2Line size={32} className="opacity-50" />
             <span className="text-sm">No images found</span>
           </div>
         ) : (
@@ -126,17 +124,18 @@ export default function PanelImages() {
                   type: "Image",
                   src: image.src.large2x,
                   name: `Photo by ${image.photographer}`,
-                  duration: 5_000_000,
+                  // width: image.width,
+                  // height: image.height,
+                  timing: { duration: 5_000_000 },
                 }}
-                shouldDisplayPreview={!isDraggingOverTimeline}
                 renderCustomPreview={
-                  <div className="w-20 aspect-square rounded-md overflow-hidden shadow-xl border-2 border-primary">
+                  <div className="w-20 aspect-square overflow-hidden shadow-xl border-2 border-primary">
                     <img src={image.src.medium} className="w-full h-full object-cover" />
                   </div>
                 }
               >
                 <div
-                  className="group relative aspect-square rounded-md overflow-hidden bg-secondary/50 cursor-pointer border border-transparent hover:border-primary/50 transition-all"
+                  className="group relative aspect-square overflow-hidden bg-secondary/50 cursor-pointer border border-transparent hover:border-primary/50 transition-all"
                   onClick={() => addItemToCanvas(image)}
                   style={{
                     backgroundImage: `url(${image.src.medium})`,
@@ -156,7 +155,7 @@ export default function PanelImages() {
         )}
         {isLoading && images.length > 0 && (
           <div className="flex items-center justify-center py-4">
-            <Loader2 className="animate-spin text-muted-foreground" size={20} />
+            <RiLoader5Line className="animate-spin text-muted-foreground" size={20} />
           </div>
         )}
       </ScrollArea>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo, useState } from "react";
+import { useEffect, useRef } from "react";
 import {
   Studio,
   fontManager,
@@ -7,19 +7,14 @@ import {
 } from "@openvideo/engine-pixi";
 import { useStudioStore } from "@/stores/studio-store";
 import { useProjectStore } from "@/stores/project-store";
-import { core } from "@/lib/project";
+import { core, projectStore } from "@/lib/project";
+import { nanoid } from "nanoid";
+import { useStore } from "zustand";
 import { editorFont } from "./constants";
 import { CUSTOM_TRANSITIONS } from "./transition-custom";
 import { CUSTOM_EFFECTS } from "./effect-custom";
-import { useClipActions } from "./studio-context-menu";
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuShortcut,
-  ContextMenuTrigger,
-} from "@/components/ui/context-menu";
-import { Clipboard, Copy, CopyPlus, LockKeyhole, LockKeyholeOpen, Trash2 } from "lucide-react";
+import { useStudioContextMenu, StudioContextMenuProvider } from "./studio-canvas-context-menu";
+import { useResolvedColor } from "@/hooks/use-resolved-color";
 
 const STUDIO_CONFIG = {
   fps: 30,
@@ -36,50 +31,56 @@ interface CanvasPanelProps {
  * Manages the Studio instance, canvas rendering, and responsive layout updates.
  */
 export function CanvasPanel({ onReady }: CanvasPanelProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const studioRef = useRef<Studio | null>(null);
   const onReadyRef = useRef(onReady);
-  const { setStudio, setSelectedClips } = useStudioStore();
-  const { canvasSize, initialStudioJSON } = useProjectStore();
-  const {
-    selectedClip,
-    isLocked,
-    hasClipboard,
-    handleCopy,
-    handlePaste,
-    handleDuplicate,
-    handleToggleLock,
-    handleDelete,
-  } = useClipActions();
-  const [editingClip, setEditingClip] = useState<any | null>(null);
+  const { setStudio } = useStudioStore();
+  const { canvasSize } = useProjectStore();
+
+  const explicitBgColor = useStore(projectStore, (s) => s.settings.backgroundColor);
+  const resolvedCardColor = useResolvedColor(containerRef, "--card", "#1D1816");
 
   // Keep onReady ref up to date
   useEffect(() => {
     onReadyRef.current = onReady;
   }, [onReady]);
 
+  const { state: contextMenuState, openContextMenu, closeContextMenu } = useStudioContextMenu();
+
   // Handle dimension changes
   useEffect(() => {
     if (studioRef.current) {
       studioRef.current.setSize(canvasSize.width, canvasSize.height);
     }
-    core.store.getState().updateSettings({
-      width: canvasSize.width,
-      height: canvasSize.height,
+    core.execute({
+      id: nanoid(),
+      type: "project.updateSettings",
+      payload: { width: canvasSize.width, height: canvasSize.height },
     });
   }, [canvasSize]);
 
+  // Handle backdrop (outside area) color changes based on theme
+  useEffect(() => {
+    if (studioRef.current) {
+      studioRef.current.setBackgroundColor(resolvedCardColor);
+    }
+  }, [resolvedCardColor]);
+
   // Setup Studio and ResizeObserver (only once on mount)
   useEffect(() => {
+    console.log("INIT STUDIO");
     if (!canvasRef.current) return;
 
     // Create studio instance
     studioRef.current = new Studio({
       ...canvasSize,
       ...STUDIO_CONFIG,
-      backgroundColor: "#111111",
+      backgroundColor: resolvedCardColor,
+      artboardColor: "#000000",
       canvas: canvasRef.current,
       core: core,
+      previewScale: 0.75,
     });
 
     // Initialize fonts and notify when ready
@@ -124,6 +125,21 @@ export function CanvasPanel({ onReady }: CanvasPanelProps) {
       resizeObserver.observe(parentElement);
     }
 
+    // Handle right-click for context menu
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const selectedIds = core.store.getState().selectedIds;
+      const hasSelection = selectedIds.length > 0;
+
+      // Check if clicking on a selected object vs background
+      // For now, we'll show object menu if there's a selection
+      openContextMenu({ x: e.clientX, y: e.clientY }, hasSelection ? "object" : "background");
+    };
+
+    parentElement?.addEventListener("contextmenu", handleContextMenu, { capture: true });
+
     // Cleanup function
     return () => {
       // Disconnect ResizeObserver
@@ -131,6 +147,9 @@ export function CanvasPanel({ onReady }: CanvasPanelProps) {
         resizeObserver.unobserve(parentElement);
         resizeObserver.disconnect();
       }
+
+      // Remove context menu listener
+      parentElement?.removeEventListener("contextmenu", handleContextMenu, { capture: true });
 
       // Destroy Studio instance
       if (studioRef.current) {
@@ -151,109 +170,23 @@ export function CanvasPanel({ onReady }: CanvasPanelProps) {
     });
   }, []);
 
-  const handleContextMenu = (e: React.MouseEvent) => {
-    if (!studioRef.current || !canvasRef.current) return;
-
-    const rect = canvasRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    // Convert to PIXI global coordinates
-    const topmostClip = studioRef.current.selection.getTopmostClipAtPoint({
-      x,
-      y,
-    });
-
-    if (topmostClip) {
-      core.store.getState().select(topmostClip.id);
-    } else {
-      core.store.getState().deselect();
-    }
-  };
-
   return (
-    <ContextMenu>
-      <ContextMenuTrigger asChild>
-        <div className="h-full w-full flex flex-col min-h-0 min-w-0 bg-card rounded-sm relative">
-          <div
-            onContextMenu={handleContextMenu}
-            style={{
-              flex: 1,
-              position: "relative", // Ensure relative positioning for absolute children if needed
-              overflow: "hidden", // Hide anything outside (though canvas masks it too)
-            }}
-          >
-            <canvas
-              ref={canvasRef}
-              style={{
-                display: "block",
-                width: "100%",
-                height: "100%",
-                outline: "none", // Avoid focus outline on canvas click
-              }}
-              tabIndex={0}
-            />
-          </div>
-        </div>
-      </ContextMenuTrigger>
-
-      <ContextMenuContent
-        className="w-44"
-        onContextMenu={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-        }}
+    <StudioContextMenuProvider state={contextMenuState} onClose={closeContextMenu}>
+      <div
+        ref={containerRef}
+        className="h-full w-full flex flex-col min-h-0 min-w-0 bg-card rounded-sm relative"
       >
-        {selectedClip && selectedClip?.type !== "Transition" ? (
-          <>
-            {!isLocked && (
-              <>
-                <ContextMenuItem onClick={handleCopy} disabled={!selectedClip}>
-                  <Copy className="mr-2 w-4 h-4" />
-                  Copy
-                  <ContextMenuShortcut>⌘ C</ContextMenuShortcut>
-                </ContextMenuItem>
-
-                <ContextMenuItem onClick={handlePaste} disabled={!hasClipboard}>
-                  <Clipboard className="mr-2 w-4 h-4" />
-                  Paste
-                  <ContextMenuShortcut>⌘ V</ContextMenuShortcut>
-                </ContextMenuItem>
-
-                <ContextMenuItem onClick={handleDuplicate} disabled={!selectedClip}>
-                  <CopyPlus className="mr-2 w-4 h-4" />
-                  Duplicate
-                  <ContextMenuShortcut>⌘ D</ContextMenuShortcut>
-                </ContextMenuItem>
-              </>
-            )}
-
-            <ContextMenuItem onClick={handleToggleLock}>
-              {isLocked ? (
-                <LockKeyholeOpen className="mr-2 w-4 h-4" />
-              ) : (
-                <LockKeyhole className="mr-2 w-4 h-4" />
-              )}
-              {isLocked ? "Unlock" : "Lock"}
-              <ContextMenuShortcut>⌘ L</ContextMenuShortcut>
-            </ContextMenuItem>
-
-            {!isLocked && (
-              <ContextMenuItem onClick={handleDelete} disabled={!selectedClip}>
-                <Trash2 className="mr-2 w-4 h-4" />
-                Delete
-                <ContextMenuShortcut>⌫</ContextMenuShortcut>
-              </ContextMenuItem>
-            )}
-          </>
-        ) : (
-          <ContextMenuItem onClick={handlePaste} disabled={!hasClipboard}>
-            <Clipboard className="mr-2 w-4 h-4" />
-            Paste
-            <ContextMenuShortcut>⌘ V</ContextMenuShortcut>
-          </ContextMenuItem>
-        )}
-      </ContextMenuContent>
-    </ContextMenu>
+        <canvas
+          ref={canvasRef}
+          style={{
+            display: "block",
+            width: "100%",
+            height: "100%",
+            outline: "none", // Avoid focus outline on canvas click
+          }}
+          tabIndex={0}
+        />
+      </div>
+    </StudioContextMenuProvider>
   );
 }

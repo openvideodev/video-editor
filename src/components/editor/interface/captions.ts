@@ -5,7 +5,7 @@ export interface IBoxShadow {
   blur: number;
 }
 export interface ICaptionsControlProps {
-  id: string;
+  id?: string;
   type?: "word" | "lines";
   appearedColor: string;
   activeColor: string;

@@ -41,29 +41,8 @@ export function drawVerticalLeftIcon(
   styleOverride: any,
   fabricObject: FabricObject,
 ) {
-  const width = 6; // Handle width
-  const height = fabricObject.height;
-  const borderRadius = 2;
-
   ctx.save();
-  // Move inside: left is the edge, so we move right by width/2
-  ctx.translate(left + width / 2, top);
-  ctx.rotate(util.degreesToRadians(fabricObject.angle));
-
-  // Draw transparent rectangle
-  ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
-  ctx.beginPath();
-  ctx.roundRect(-width / 2, -height / 2, width, height, borderRadius);
-  ctx.fill();
-
-  // Draw centered vertical line
-  const lineWidth = 2;
-  const lineHeight = 14;
-  ctx.fillStyle = "white";
-  ctx.beginPath();
-  ctx.roundRect(-lineWidth / 2, -lineHeight / 2, lineWidth, lineHeight, lineWidth / 2);
-  ctx.fill();
-
+  // draw handle
   ctx.restore();
 }
 
@@ -74,28 +53,7 @@ export function drawVerticalRightIcon(
   styleOverride: any,
   fabricObject: FabricObject,
 ) {
-  const width = 6; // Handle width
-  const height = fabricObject.height;
-  const borderRadius = 2;
-
   ctx.save();
-  // Move inside: left is the edge, so we move left by width/2
-  ctx.translate(left - width / 2, top);
-  ctx.rotate(util.degreesToRadians(fabricObject.angle));
-
-  // Draw transparent rectangle
-  ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
-  ctx.beginPath();
-  ctx.roundRect(-width / 2, -height / 2, width, height, borderRadius);
-  ctx.fill();
-
-  // Draw centered vertical line
-  const lineWidth = 2;
-  const lineHeight = 14;
-  ctx.fillStyle = "white";
-  ctx.beginPath();
-  ctx.roundRect(-lineWidth / 2, -lineHeight / 2, lineWidth, lineHeight, lineWidth / 2);
-  ctx.fill();
-
+  // draw handle
   ctx.restore();
 }

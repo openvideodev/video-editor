@@ -299,18 +299,24 @@ export const convertSchemaToExported = async (schemaJson: any): Promise<any> => 
             clips.push({
               type: "Video",
               src: clip.src[0], // Use first video source
-              display: {
-                from: fromUs,
-                to: toUs,
+              timing: {
+                display: {
+                  from: fromUs,
+                  to: toUs,
+                },
+                playbackRate: 1,
+                duration: durationUs,
               },
-              playbackRate: 1,
-              duration: durationUs,
-              // Don't set width/height - let video load naturally
-              // Will be scaled to fit canvas in post-processing
-              angle: 0,
-              zIndex: 0,
-              opacity: 1,
-              flip: null,
+              transform: {
+                x: 0,
+                y: 0,
+                width: 0, // Don't set width/height - let video load naturally
+                height: 0,
+                angle: 0,
+                zIndex: 0,
+                opacity: 1,
+                flip: null,
+              },
               audio: true,
             });
           } else if (
@@ -331,20 +337,24 @@ export const convertSchemaToExported = async (schemaJson: any): Promise<any> => 
             clips.push({
               type: "Image",
               src: clip.src[0], // Use first image source
-              display: {
-                from: fromUs,
-                to: toUs,
+              timing: {
+                display: {
+                  from: fromUs,
+                  to: toUs,
+                },
+                playbackRate: 1,
+                duration: durationUs,
               },
-              playbackRate: 1,
-              duration: durationUs,
-              left: 0,
-              top: 0,
-              width: width,
-              height: height,
-              angle: 0,
-              zIndex: 0,
-              opacity: 1,
-              flip: null,
+              transform: {
+                x: 0,
+                y: 0,
+                width: width,
+                height: height,
+                angle: 0,
+                zIndex: 0,
+                opacity: 1,
+                flip: null,
+              },
             });
           }
         }
@@ -364,20 +374,14 @@ export const convertSchemaToExported = async (schemaJson: any): Promise<any> => 
         clips.push({
           type: "Audio",
           src: segment.textToSpeech.src,
-          display: {
-            from: fromUs,
-            to: toUs,
+          timing: {
+            display: {
+              from: fromUs,
+              to: toUs,
+            },
+            playbackRate: 1,
+            duration: durationUs,
           },
-          playbackRate: 1,
-          duration: durationUs,
-          left: 0,
-          top: 0,
-          width: 0,
-          height: 0,
-          angle: 0,
-          zIndex: 0,
-          opacity: 1,
-          flip: null,
           loop: false,
           volume: 1,
         });
@@ -419,27 +423,31 @@ export const convertSchemaToExported = async (schemaJson: any): Promise<any> => 
               clips.push({
                 type: "Caption",
                 src: "",
-                display: {
-                  from: fromUs,
-                  to: toUs,
+                timing: {
+                  display: {
+                    from: fromUs,
+                    to: toUs,
+                  },
+                  playbackRate: 1,
+                  duration: durationUs,
                 },
-                playbackRate: 1,
-                duration: durationUs,
-                left: (width - captionWidth) / 2, // Center horizontally based on actual width
-                top: height - 200, // Position near bottom
-                width: captionWidth,
-                height: captionHeight,
-                angle: 0,
-                zIndex: 10, // Above video/image
-                opacity: 1,
-                flip: null,
+                transform: {
+                  x: (width - captionWidth) / 2, // Center horizontally based on actual width
+                  y: height - 200, // Position near bottom
+                  width: captionWidth,
+                  height: captionHeight,
+                  angle: 0,
+                  zIndex: 10, // Above video/image
+                  opacity: 1,
+                  flip: null,
+                },
                 text: chunk.text,
                 style: {
                   fontSize: 80,
                   fontFamily: "Bangers-Regular",
                   fontWeight: "700",
                   fontStyle: "normal",
-                  color: "#ffffff",
+                  fill: "#ffffff",
                   align: "center",
                   fontUrl:
                     "https://fonts.gstatic.com/s/poppins/v15/pxiByp8kv8JHgFVrLCz7V1tvFP-KUEg.ttf",
@@ -458,13 +466,10 @@ export const convertSchemaToExported = async (schemaJson: any): Promise<any> => 
                 caption: {
                   words: chunk.words,
                   colors: {
-                    appeared: "#ffffff",
-                    active: "#ffffff",
-                    activeFill: "#FF5700",
-                    background: "",
-                    keyword: "#ffffff",
+                    active: { color: "#ffffff", background: "#FF5700" },
+                    future: { color: "#ffffff" },
+                    keyword: { color: "#ffffff", preserveAfterSpoken: true },
                   },
-                  preserveKeywordColor: true,
                   positioning: {
                     videoWidth: width,
                     videoHeight: height,
@@ -489,7 +494,7 @@ export const convertSchemaToExported = async (schemaJson: any): Promise<any> => 
       width,
       height,
       fps: 30,
-      backgroundColor: "#000000",
+      bgColor: "#000000",
     },
   };
 };

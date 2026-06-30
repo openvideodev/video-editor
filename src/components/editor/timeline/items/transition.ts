@@ -17,7 +17,7 @@ class Transition extends BaseTransition {
   public sync(clipData: any) {
     this.fromClipId = clipData.fromClipId;
     this.toClipId = clipData.toClipId;
-    this.key = clipData.transitionEffect?.key || clipData.key || "none";
+    this.key = clipData.transitionKey || clipData.key || "none";
     this.duration = clipData.duration;
 
     this.set({

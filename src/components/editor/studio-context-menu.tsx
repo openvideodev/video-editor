@@ -13,17 +13,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Clipboard,
-  Copy,
-  CopyPlus,
-  LockKeyhole,
-  LockKeyholeOpen,
-  MoreHorizontalIcon,
-  Trash2,
-} from "lucide-react";
+  RiClipboardLine,
+  RiFileCopyLine,
+  RiMoreLine,
+  RiLockLine,
+  RiLockUnlockLine,
+  RiDeleteBinLine,
+} from "@remixicon/react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { useStudioStore } from "@/stores/studio-store";
 import { core, projectStore } from "@/lib/project";
 import { nanoid, AnyClip } from "@openvideo/core";
 
@@ -62,10 +60,13 @@ export function useClipActions(clipOverride?: any) {
     const newClip = {
       ...clipboardClipJSON,
       id: newId,
-      display: {
-        ...clipboardClipJSON.display,
-        from: currentTime,
-        to: currentTime + (clipboardClipJSON.duration ?? 0),
+      timing: {
+        ...clipboardClipJSON.timing,
+        display: {
+          ...clipboardClipJSON.timing.display,
+          from: currentTime,
+          to: currentTime + clipboardClipJSON.timing.duration,
+        },
       },
     };
 
@@ -125,7 +126,7 @@ export function StudioContextMenu() {
                 "w-9 h-9 rounded-full transition-all hover:bg-accent/50 active:scale-90",
               )}
             >
-              <MoreHorizontalIcon className="w-4 h-4" />
+              <RiMoreLine className="w-4 h-4" />
             </Button>
           </DropdownMenuTrigger>
         </TooltipTrigger>
@@ -139,19 +140,19 @@ export function StudioContextMenu() {
           {!isLocked && (
             <>
               <DropdownMenuItem onClick={handleCopy} disabled={!selectedClip}>
-                <Copy />
+                <RiFileCopyLine />
                 Copy
                 <DropdownMenuShortcut>⌘ C</DropdownMenuShortcut>
               </DropdownMenuItem>
 
               <DropdownMenuItem onClick={handlePaste} disabled={!hasClipboard}>
-                <Clipboard />
+                <RiClipboardLine />
                 Paste
                 <DropdownMenuShortcut>⌘ V</DropdownMenuShortcut>
               </DropdownMenuItem>
 
               <DropdownMenuItem onClick={handleDuplicate} disabled={!selectedClip}>
-                <CopyPlus />
+                <RiFileCopyLine />
                 Duplicate
                 <DropdownMenuShortcut>⌘ D</DropdownMenuShortcut>
               </DropdownMenuItem>
@@ -159,14 +160,14 @@ export function StudioContextMenu() {
           )}
 
           <DropdownMenuItem onClick={handleToggleLock} disabled={!selectedClip}>
-            {isLocked ? <LockKeyholeOpen /> : <LockKeyhole />}
+            {isLocked ? <RiLockUnlockLine /> : <RiLockLine />}
             {isLocked ? "Unlock" : "Lock"}
             <DropdownMenuShortcut>⌘ L</DropdownMenuShortcut>
           </DropdownMenuItem>
 
           {!isLocked && (
             <DropdownMenuItem onClick={handleDelete} disabled={!selectedClip}>
-              <Trash2 />
+              <RiDeleteBinLine />
               Delete
               <DropdownMenuShortcut>⌫</DropdownMenuShortcut>
             </DropdownMenuItem>

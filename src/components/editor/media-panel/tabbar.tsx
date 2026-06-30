@@ -3,76 +3,56 @@
 import { cn } from "@/lib/utils";
 import { type Tab, tabs, useMediaPanelStore } from "./store";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { useEffect, useRef, useState } from "react";
+import { useStudioStore } from "@/stores/studio-store";
 
 export function TabBar() {
-  const { activeTab, setActiveTab } = useMediaPanelStore();
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [showLeftFade, setShowLeftFade] = useState(false);
-  const [showRightFade, setShowRightFade] = useState(false);
-
-  const checkScrollPosition = () => {
-    const element = scrollRef.current;
-    if (!element) return;
-
-    const { scrollLeft, scrollWidth, clientWidth } = element;
-    setShowLeftFade(scrollLeft > 0);
-    setShowRightFade(scrollLeft < scrollWidth - clientWidth - 1);
-  };
-
-  useEffect(() => {
-    const element = scrollRef.current;
-    if (!element) return;
-
-    checkScrollPosition();
-    element.addEventListener("scroll", checkScrollPosition);
-
-    const resizeObserver = new ResizeObserver(checkScrollPosition);
-    resizeObserver.observe(element);
-
-    return () => {
-      element.removeEventListener("scroll", checkScrollPosition);
-      resizeObserver.disconnect();
-    };
-  }, []);
+  const { activeTab, setActiveTab, isOpen, setIsOpen } = useMediaPanelStore();
+  const { selectedClips, setSelectedClips } = useStudioStore();
+  const hasSelection = selectedClips.length > 0;
 
   return (
-    <div className="relative flex items-center py-2 px-2 bg-primary/2">
-      {showLeftFade && (
-        <div className="absolute left-0 top-0 bottom-0 w-8 bg-linear-to-r from-card to-transparent z-10 pointer-events-none" />
-      )}
-      <div ref={scrollRef} className="overflow-x-auto scrollbar-hidden w-full">
-        <div className="flex items-center gap-2 w-fit mx-auto px-4">
-          {(Object.keys(tabs) as Tab[]).map((tabKey) => {
-            const tab = tabs[tabKey];
-            const isActive = activeTab === tabKey;
-            return (
-              <div
-                className={cn(
-                  "flex items-center justify-center flex-none h-7.5 w-7.5 cursor-pointer rounded-sm transition-all duration-200",
-                  isActive
-                    ? "bg-white/10 text-white"
-                    : "text-muted-foreground hover:bg-white/5 hover:text-white",
-                )}
-                onClick={() => setActiveTab(tabKey)}
-                key={tabKey}
-              >
-                <Tooltip delayDuration={10}>
-                  <TooltipTrigger asChild>
-                    <tab.icon className="size-5" />
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" align="center" sideOffset={8}>
-                    {tab.label}
-                  </TooltipContent>
-                </Tooltip>
-              </div>
-            );
-          })}
-        </div>
+    <div className="relative flex items-center border-b h-12 bg-background shrink-0">
+      <div className="flex items-center justify-center py-2 px-2 gap-1 w-full overflow-x-auto scrollbar-hidden">
+        {(Object.keys(tabs) as Tab[]).map((tabKey) => {
+          const tab = tabs[tabKey];
+          const isActive = activeTab === tabKey && isOpen && !hasSelection;
+          return (
+            <div
+              className={cn(
+                "flex items-center justify-center flex-none cursor-pointer transition-all duration-200 h-8 w-8",
+                isActive
+                  ? "bg-accent text-accent-foreground"
+                  : "text-accent-foreground/80 hover:bg-accent hover:text-accent-foreground",
+              )}
+              onClick={() => {
+                if (hasSelection) {
+                  setSelectedClips([]);
+                  setActiveTab(tabKey);
+                  setIsOpen(true);
+                } else if (activeTab === tabKey && isOpen) {
+                  setIsOpen(false);
+                } else {
+                  setActiveTab(tabKey);
+                }
+              }}
+              key={tabKey}
+            >
+              <Tooltip delayDuration={10}>
+                <TooltipTrigger asChild>
+                  {isActive ? (
+                    <tab.activeIcon className="size-[18px]" />
+                  ) : (
+                    <tab.icon className="size-[18px]" />
+                  )}
+                </TooltipTrigger>
+                <TooltipContent side="bottom" align="center" sideOffset={8}>
+                  {tab.label}
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          );
+        })}
       </div>
-      {showRightFade && (
-        <div className="absolute right-0 top-0 bottom-0 w-8 bg-linear-to-l from-card to-transparent z-10 pointer-events-none" />
-      )}
     </div>
   );
 }

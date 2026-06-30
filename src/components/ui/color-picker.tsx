@@ -1,6 +1,6 @@
 "use client";
 import Color from "color";
-import { PipetteIcon } from "lucide-react";
+import { RiDropperLine } from "@remixicon/react";
 import { Slider } from "radix-ui";
 import {
   type ComponentProps,
@@ -48,11 +48,13 @@ export type ColorPickerProps = HTMLAttributes<HTMLDivElement> & {
   value?: Parameters<typeof Color>[0];
   defaultValue?: Parameters<typeof Color>[0];
   onChange?: (value: Parameters<typeof Color.rgb>[0]) => void;
+  throttleMs?: number;
 };
 export const ColorPicker = ({
   value,
   defaultValue = "#000000",
   onChange,
+  throttleMs = 50,
   className,
   ...props
 }: ColorPickerProps) => {
@@ -69,14 +71,52 @@ export const ColorPicker = ({
   const [mode, setMode] = useState("hex");
   const isInitialMount = useRef(true);
   const prevValuesRef = useRef({ hue, saturation, lightness, alpha });
+  const throttleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingEmit = useRef<{
+    hue: number;
+    saturation: number;
+    lightness: number;
+    alpha: number;
+  } | null>(null);
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  const flushPending = useCallback(() => {
+    if (throttleTimer.current) {
+      clearTimeout(throttleTimer.current);
+      throttleTimer.current = null;
+    }
+    if (pendingEmit.current && onChangeRef.current) {
+      const { hue: h, saturation: s, lightness: l, alpha: a } = pendingEmit.current;
+      const c = Color.hsl(h, s, l).alpha(a / 100);
+      const rgba = c.rgb().array();
+      onChangeRef.current([rgba[0], rgba[1], rgba[2], a / 100]);
+      pendingEmit.current = null;
+    }
+  }, []);
+
+  // Flush on window pointerup to catch ColorPickerSelection drags (which attach to window)
+  useEffect(() => {
+    window.addEventListener("pointerup", flushPending);
+    return () => window.removeEventListener("pointerup", flushPending);
+  }, [flushPending]);
+
   // Update color when controlled value changes
   useEffect(() => {
     if (value) {
-      const color = Color.rgb(value).rgb().object();
-      setHue(color.r);
-      setSaturation(color.g);
-      setLightness(color.b);
-      setAlpha(color.a);
+      const parsed = Color(value);
+      const h = parsed.hue();
+      const s = parsed.saturationl();
+      const l = parsed.lightness();
+      const a = (parsed.alpha() ?? 1) * 100;
+      // Update prevValuesRef first so the change effect treats this as a no-op
+      prevValuesRef.current = { hue: h, saturation: s, lightness: l, alpha: a };
+      setHue(h);
+      setSaturation(s);
+      setLightness(l);
+      setAlpha(a);
     }
   }, [value]);
   // Notify parent of changes (skip initial mount and unchanged values)
@@ -101,12 +141,22 @@ export const ColorPicker = ({
 
     prevValuesRef.current = { hue, saturation, lightness, alpha };
 
-    if (onChange) {
-      const color = Color.hsl(hue, saturation, lightness).alpha(alpha / 100);
-      const rgba = color.rgb().array();
-      onChange([rgba[0], rgba[1], rgba[2], alpha / 100]);
+    if (!onChangeRef.current) return;
+
+    pendingEmit.current = { hue, saturation, lightness, alpha };
+    if (!throttleTimer.current) {
+      throttleTimer.current = setTimeout(() => {
+        throttleTimer.current = null;
+        if (pendingEmit.current && onChangeRef.current) {
+          const { hue: h, saturation: s, lightness: l, alpha: a } = pendingEmit.current;
+          const c = Color.hsl(h, s, l).alpha(a / 100);
+          const rgba = c.rgb().array();
+          onChangeRef.current([rgba[0], rgba[1], rgba[2], a / 100]);
+          pendingEmit.current = null;
+        }
+      }, throttleMs);
     }
-  }, [hue, saturation, lightness, alpha, onChange]);
+  }, [hue, saturation, lightness, alpha, throttleMs]);
   return (
     <ColorPickerContext.Provider
       value={{
@@ -122,7 +172,11 @@ export const ColorPicker = ({
         setMode,
       }}
     >
-      <div className={cn("flex size-full flex-col gap-4", className)} {...(props as any)} />
+      <div
+        className={cn("flex size-full flex-col gap-4", className)}
+        onPointerUp={flushPending}
+        {...(props as any)}
+      />
     </ColorPickerContext.Provider>
   );
 };
@@ -283,7 +337,7 @@ export const ColorPickerEyeDropper = ({ className, ...props }: ColorPickerEyeDro
       type="button"
       {...(props as any)}
     >
-      <PipetteIcon size={16} />
+      <RiDropperLine size={16} />
     </Button>
   );
 };

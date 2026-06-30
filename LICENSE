@@ -22,7 +22,7 @@ You are eligible to use OpenVideo for free if you are:
 
 Permission is hereby granted, free of charge, to any person eligible for the "Free License", to use the software non-commercially or commercially for the purpose of creating videos and images and to modify the software to their own liking, for the purpose of fulfilling their custom use case or to contribute bug fixes or improvements back to OpenVideo.
 
-This license applies to all packages, applications, and services within the OpenVideo organization.
+This license applies to all packages, applications, and services within the OpenVideo monorepo.
 
 ### Disallowed use cases
 
@@ -40,8 +40,8 @@ Support is provided on a best-we-can-do basis via GitHub Issues and Discord.
 
 You are required to obtain a Company License to use OpenVideo if you are not within the group of entities eligible for a Free License. This license will enable you to use OpenVideo for the allowed use cases specified in the Free License.
 
-Contact hello@openvideo.dev for pricing and to buy a license.
+Contact cloud@openvideo.dev for pricing and to buy a license.
 
 ### FAQs
 
-Are you not sure whether you need a Company License because of an edge case? Contact hello@openvideo.dev with your situation.
+Are you not sure whether you need a Company License because of an edge case? Contact cloud@openvideo.dev with your situation.
